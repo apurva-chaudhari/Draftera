@@ -1,0 +1,35 @@
+
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor settings
+.vscode/*
+!.vscode/extensions.json
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
