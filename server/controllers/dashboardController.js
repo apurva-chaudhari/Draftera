@@ -59,7 +59,7 @@ async function getDashboardSummary(req, res, next) {
 
       Clarification.countDocuments({
         project: { $in: projectIds },
-        status: { $in: ["open", "answered"] },
+        status: "open",
       }),
     ]);
 
