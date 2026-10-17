@@ -4,12 +4,31 @@ import { apiRequest } from "./api.js";
 const TOKEN_KEY = "draftera_token";
 const USER_KEY = "draftera_user";
 
+function saveSession(data, action) {
+  if (!data.token) {
+    throw new Error(
+      `${action} response did not include an authentication token.`
+    );
+  }
+
+  if (!data.user) {
+    throw new Error(`${action} response did not include user information.`);
+  }
+
+  localStorage.setItem(TOKEN_KEY, data.token);
+  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+  return data;
+}
+
 const authService = {
   async register(userData) {
-    return apiRequest("/auth/register", {
+    const data = await apiRequest("/auth/register", {
       method: "POST",
       body: JSON.stringify(userData),
     });
+
+    return saveSession(data, "Registration");
   },
 
   async login(credentials) {
@@ -18,17 +37,7 @@ const authService = {
       body: JSON.stringify(credentials),
     });
 
-    if (!data.token) {
-      throw new Error("Login response did not include an authentication token.");
-    }
-
-    localStorage.setItem(TOKEN_KEY, data.token);
-
-    if (data.user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    }
-
-    return data;
+    return saveSession(data, "Login");
   },
 
   async getCurrentUser() {

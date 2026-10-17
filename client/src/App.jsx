@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard.jsx";
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 import authService from "./services/authService.js";
 import "./App.css";
 
@@ -71,6 +72,7 @@ function App() {
         />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         <Route
           path="*"

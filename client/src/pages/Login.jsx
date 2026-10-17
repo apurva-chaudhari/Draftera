@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/authService.js";
 
 function Login() {
@@ -93,6 +92,9 @@ function Login() {
             </button>
           </form>
 
+          <p className="auth-footer">
+            New to Draftera? <Link to="/register">Create an account</Link>
+          </p>
           <p className="auth-footer">
             Secure access for your construction project team.
           </p>
