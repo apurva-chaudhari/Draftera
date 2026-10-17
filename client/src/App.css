@@ -737,3 +737,243 @@
     padding: 44px 24px;
   }
 }
+/* Draftera project dashboard */
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #e0e6ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #526176;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #f5f8fc;
+  border-color: #cbd6e5;
+}
+
+.primary-button:disabled,
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.project-form {
+  display: grid;
+  gap: 16px;
+  margin: 0 26px 24px;
+  padding: 22px;
+  border: 1px solid #e0e8f3;
+  border-radius: 12px;
+  background: #f9fbfe;
+}
+
+.project-form h3 {
+  margin: 0;
+  color: #24364f;
+  font-size: 16px;
+}
+
+.project-form label {
+  display: grid;
+  gap: 7px;
+  color: #46566c;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.project-form input,
+.project-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #dce3ed;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #26364c;
+  font: inherit;
+  font-size: 13px;
+}
+
+.project-form input:focus,
+.project-form textarea:focus {
+  border-color: #7ca2d7;
+  box-shadow: 0 0 0 3px rgb(61 113 185 / 9%);
+}
+
+.project-form textarea {
+  resize: vertical;
+}
+
+.project-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.project-success {
+  margin: 0 26px 18px;
+  padding: 12px 14px;
+  border: 1px solid #ccebdc;
+  border-radius: 8px;
+  background: #eefaf4;
+  color: #277a56;
+  font-size: 13px;
+}
+
+.dashboard-error {
+  margin: 0 26px 18px;
+  padding: 12px 14px;
+  border: 1px solid #f0caca;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #a33c3c;
+  font-size: 12px;
+}
+
+.dashboard-error p {
+  margin: 0 0 5px;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 26px 26px;
+}
+
+.project-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e5eaf1;
+  border-radius: 11px;
+  background: #fff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.project-card:hover {
+  border-color: #cbd9ec;
+  box-shadow: 0 5px 16px rgb(27 43 65 / 5%);
+}
+
+.project-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.project-code {
+  color: #4269a5;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+}
+
+.project-status {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eaf2ff;
+  color: #315d98;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.project-status.on_hold {
+  background: #fff3dc;
+  color: #98671a;
+}
+
+.project-status.completed {
+  background: #e6f7ef;
+  color: #21845c;
+}
+
+.project-status.archived {
+  background: #eef0f4;
+  color: #687386;
+}
+
+.project-card h3 {
+  margin: 16px 0 8px;
+  color: #26364c;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.project-description {
+  min-height: 38px;
+  margin: 0 0 18px;
+  color: #7d899b;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.project-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 14px;
+  border-top: 1px solid #edf0f5;
+  color: #8994a5;
+  font-size: 10px;
+}
+
+.project-card-footer strong {
+  color: #526176;
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+  .dashboard-header-actions {
+    width: 100%;
+  }
+
+  .project-form {
+    margin: 0 16px 20px;
+    padding: 16px;
+  }
+
+  .project-success,
+  .dashboard-error {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+    padding: 0 16px 20px;
+  }
+
+  .panel-heading {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 681px) and (max-width: 1000px) {
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}

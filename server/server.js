@@ -3,9 +3,15 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 require("dotenv").config();
+const mongoose = require("mongoose");
+const clarificationRoutes = require("./routes/clarificationRoutes");
 
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const drawingRoutes = require("./routes/drawingRoutes");
+const acknowledgmentRoutes = require("./routes/acknowledgmentRoutes");
 const { requireAuth } = require("./middleware/authMiddleware");
 const app = express();
 
@@ -24,16 +30,23 @@ app.use(
 
 // Basic API health check.
 app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
+  const databaseConnected = mongoose.connection.readyState === 1;
+
+  res.status(databaseConnected ? 200 : 503).json({
+    success: databaseConnected,
     message: "Draftera API is running.",
-    database: "connected",
+    database: databaseConnected ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
   });
 });
 
 // Authentication endpoints.
 app.use("/api/auth", authRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/drawings", drawingRoutes);
+app.use("/api/acknowledgments", acknowledgmentRoutes);
+app.use("/api/clarifications", clarificationRoutes);
 // Return the current authenticated user's public information.
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.status(200).json({
