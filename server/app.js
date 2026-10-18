@@ -39,6 +39,8 @@ app.use(
       }
       return callback(new Error("Origin not allowed by CORS."));
     },
+    // Lets the browser read the file name of CSV downloads.
+    exposedHeaders: ["Content-Disposition"],
   })
 );
 

@@ -1,4 +1,4 @@
-import { apiRequest } from "./api.js";
+import { apiDownload, apiRequest } from "./api.js";
 
 const projectService = {
   list() {
@@ -25,6 +25,10 @@ const projectService = {
 
   getCurrency(projectId) {
     return apiRequest(`/projects/${projectId}/currency`);
+  },
+
+  downloadReport(projectId) {
+    return apiDownload(`/projects/${projectId}/report.csv`, "distribution-report.csv");
   },
 
   getActivity(projectId) {

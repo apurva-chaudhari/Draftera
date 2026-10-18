@@ -13,10 +13,10 @@ const drawingService = {
     return apiRequest(`/drawings/revision/${revisionId}`);
   },
 
-  publishRevision(revisionId, recipients) {
+  publishRevision(revisionId, recipients, dueInHours = null) {
     return apiRequest(`/drawings/${revisionId}/publish`, {
       method: "POST",
-      body: JSON.stringify({ recipients }),
+      body: JSON.stringify({ recipients, dueInHours }),
     });
   },
 
