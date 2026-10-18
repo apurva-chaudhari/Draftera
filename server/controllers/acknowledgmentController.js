@@ -1,8 +1,14 @@
-
 const mongoose = require("mongoose");
 
 const Acknowledgment = require("../models/Acknowledgment");
 const DrawingRevision = require("../models/DrawingRevision");
+const Project = require("../models/Project");
+const User = require("../models/User");
+const { logActivity } = require("../utils/activity");
+const { getProjectAccess } = require("../utils/projectAccess");
+
+// A supervisor may nudge the same person about the same revision once per hour.
+const REMINDER_COOLDOWN_MS = 60 * 60 * 1000;
 
 const listMyAcknowledgments = async (req, res, next) => {
   try {
@@ -11,12 +17,13 @@ const listMyAcknowledgments = async (req, res, next) => {
     })
       .populate({
         path: "revision",
-        select: "revisionNumber issueDate changeSummary status publishedAt drawing",
+        select: "revisionNumber issueDate changeSummary status publishedAt drawing project",
         populate: {
           path: "drawing",
           select: "drawingNumber title",
         },
       })
+      .populate("project", "name code")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -40,9 +47,12 @@ const acknowledgeRevision = async (req, res, next) => {
       });
     }
 
-    const revision = await DrawingRevision.findById(revisionId);
+    const revision = await DrawingRevision.findById(revisionId).populate(
+      "drawing",
+      "drawingNumber"
+    );
 
-    if (!revision || revision.status !== "published") {
+    if (!revision || !["published", "superseded"].includes(revision.status)) {
       return res.status(404).json({
         success: false,
         message: "Published revision not found.",
@@ -69,9 +79,36 @@ const acknowledgeRevision = async (req, res, next) => {
       });
     }
 
+    // Acknowledging an out-of-date drawing would create a false sense of
+    // safety, so it is refused and the user is pointed at the newer one.
+    if (revision.status === "superseded") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This revision has been superseded. Open the latest revision of the drawing and acknowledge that instead.",
+      });
+    }
+
+    // Acknowledgment must follow opening the file; otherwise "acknowledged"
+    // would only mean "clicked a button", not "had access to the drawing".
+    if (!acknowledgment.viewedAt) {
+      return res.status(409).json({
+        success: false,
+        message: "Open the drawing before acknowledging it.",
+      });
+    }
+
     acknowledgment.status = "acknowledged";
     acknowledgment.acknowledgedAt = new Date();
     await acknowledgment.save();
+
+    await logActivity({
+      project: revision.project,
+      revision: revision._id,
+      actor: req.user._id,
+      action: "revision_acknowledged",
+      message: `${req.user.name} acknowledged ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
+    });
 
     return res.status(200).json({
       success: true,
@@ -83,7 +120,92 @@ const acknowledgeRevision = async (req, res, next) => {
   }
 };
 
+const sendReminder = async (req, res, next) => {
+  try {
+    const { revisionId, userId } = req.params;
+
+    if (!mongoose.isValidObjectId(revisionId) || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID." });
+    }
+
+    const revision = await DrawingRevision.findById(revisionId).populate(
+      "drawing",
+      "drawingNumber"
+    );
+    const project = revision ? await Project.findById(revision.project) : null;
+
+    if (!revision || !project) {
+      return res.status(404).json({ success: false, message: "Revision not found." });
+    }
+
+    if (!getProjectAccess(project, req.user._id).isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can send reminders.",
+      });
+    }
+
+    if (revision.status !== "published") {
+      return res.status(409).json({
+        success: false,
+        message: "Reminders can only be sent for the current published revision.",
+      });
+    }
+
+    const acknowledgment = await Acknowledgment.findOne({
+      revision: revision._id,
+      recipient: userId,
+    });
+
+    if (!acknowledgment) {
+      return res.status(404).json({
+        success: false,
+        message: "That person is not a recipient of this revision.",
+      });
+    }
+
+    if (acknowledgment.status === "acknowledged") {
+      return res.status(409).json({
+        success: false,
+        message: "This recipient has already acknowledged the revision.",
+      });
+    }
+
+    if (
+      acknowledgment.lastRemindedAt &&
+      Date.now() - acknowledgment.lastRemindedAt.getTime() < REMINDER_COOLDOWN_MS
+    ) {
+      return res.status(429).json({
+        success: false,
+        message: "A reminder was already sent within the last hour.",
+      });
+    }
+
+    acknowledgment.lastRemindedAt = new Date();
+    acknowledgment.reminderCount += 1;
+    await acknowledgment.save();
+
+    const recipient = await User.findById(userId).select("name");
+
+    await logActivity({
+      project: revision.project,
+      revision: revision._id,
+      actor: req.user._id,
+      action: "reminder_sent",
+      message: `${req.user.name} sent a reminder to ${recipient?.name} for ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Reminder recorded for ${recipient?.name}.`,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   listMyAcknowledgments,
   acknowledgeRevision,
+  sendReminder,
 };

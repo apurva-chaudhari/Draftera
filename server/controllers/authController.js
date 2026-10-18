@@ -51,8 +51,12 @@ async function register(req, res, next) {
     }
 
     // Public registration must not allow users to assign themselves
-    // administrator or other privileged roles.
-    if (role !== undefined && role !== "site_engineer") {
+    // administrator or supervisor privileges. Project roles are granted
+    // per project by the project supervisor.
+    const SELF_SERVICE_ROLES = ["site_engineer", "subcontractor"];
+    const accountRole = role === undefined ? "site_engineer" : role;
+
+    if (!SELF_SERVICE_ROLES.includes(accountRole)) {
       return res.status(403).json({
         success: false,
         message: "The requested role cannot be assigned during registration.",
@@ -76,7 +80,7 @@ async function register(req, res, next) {
       name: normalizedName,
       email: normalizedEmail,
       passwordHash,
-      role: "site_engineer",
+      role: accountRole,
     });
 
     const token = generateToken(user);

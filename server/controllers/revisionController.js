@@ -1,9 +1,25 @@
-
 const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
+const User = require("../models/User");
+const Drawing = require("../models/Drawing");
 const DrawingRevision = require("../models/DrawingRevision");
 const Acknowledgment = require("../models/Acknowledgment");
+const Clarification = require("../models/Clarification");
+const ActivityLog = require("../models/ActivityLog");
+const supabase = require("../config/storage");
+const { getProjectAccess } = require("../utils/projectAccess");
+const { logActivity } = require("../utils/activity");
+
+const STORAGE_BUCKET = "drawing-revisions";
+const SIGNED_URL_SECONDS = 120;
+
+// Small helper so transaction code can fail with an HTTP status.
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
 
 const publishRevision = async (req, res, next) => {
   const { revisionId } = req.params;
@@ -32,43 +48,32 @@ const publishRevision = async (req, res, next) => {
 
   try {
     let publishedRevision;
+    let drawingNumber;
+    let supersededNumbers = [];
 
+    // Publishing, superseding the old revision and creating one pending
+    // acknowledgment per recipient must succeed or fail together.
     await session.withTransaction(async () => {
       const revision = await DrawingRevision.findById(revisionId).session(session);
 
-      if (!revision) {
-        const error = new Error("Drawing revision not found.");
-        error.statusCode = 404;
-        throw error;
-      }
+      if (!revision) throw httpError(404, "Drawing revision not found.");
 
       const project = await Project.findById(revision.project).session(session);
 
-      if (!project) {
-        const error = new Error("Project not found.");
-        error.statusCode = 404;
-        throw error;
-      }
+      if (!project) throw httpError(404, "Project not found.");
 
       if (String(project.supervisor) !== String(req.user._id)) {
-        const error = new Error("Only the project supervisor can publish revisions.");
-        error.statusCode = 403;
-        throw error;
+        throw httpError(403, "Only the project supervisor can publish revisions.");
       }
 
       if (project.status !== "active") {
-        const error = new Error("This project is not active.");
-        error.statusCode = 400;
-        throw error;
+        throw httpError(400, "This project is not active.");
       }
 
       if (revision.status !== "draft") {
-        const error = new Error("Only draft revisions can be published.");
-        error.statusCode = 409;
-        throw error;
+        throw httpError(409, "Only draft revisions can be published.");
       }
 
-      const User = require("../models/User");
       const users = await User.find({
         _id: { $in: recipients },
         isActive: true,
@@ -77,9 +82,7 @@ const publishRevision = async (req, res, next) => {
         .session(session);
 
       if (users.length !== recipients.length) {
-        const error = new Error("One or more recipients are invalid or inactive.");
-        error.statusCode = 400;
-        throw error;
+        throw httpError(400, "One or more recipients are invalid or inactive.");
       }
 
       const allowedRecipientIds = new Set([
@@ -88,19 +91,21 @@ const publishRevision = async (req, res, next) => {
       ]);
 
       if (recipients.some((id) => !allowedRecipientIds.has(id))) {
-        const error = new Error("Every recipient must belong to this project.");
-        error.statusCode = 400;
-        throw error;
+        throw httpError(400, "Every recipient must belong to this project.");
       }
 
+      const previous = await DrawingRevision.find({
+        drawing: revision.drawing,
+        status: "published",
+      })
+        .select("revisionNumber")
+        .session(session);
+
+      supersededNumbers = previous.map((r) => r.revisionNumber);
+
       await DrawingRevision.updateMany(
-        {
-          drawing: revision.drawing,
-          status: "published",
-        },
-        {
-          $set: { status: "superseded" },
-        },
+        { drawing: revision.drawing, status: "published" },
+        { $set: { status: "superseded" } },
         { session }
       );
 
@@ -121,7 +126,24 @@ const publishRevision = async (req, res, next) => {
         { session }
       );
 
+      const drawing = await Drawing.findById(revision.drawing)
+        .select("drawingNumber")
+        .session(session);
+      drawingNumber = drawing?.drawingNumber;
+
       publishedRevision = revision.toObject();
+    });
+
+    const supersedeNote = supersededNumbers.length
+      ? ` It supersedes Rev ${supersededNumbers.join(", ")}.`
+      : "";
+
+    await logActivity({
+      project: publishedRevision.project,
+      revision: publishedRevision._id,
+      actor: req.user._id,
+      action: "revision_published",
+      message: `${req.user.name} published ${drawingNumber} Rev ${publishedRevision.revisionNumber} to ${recipients.length} recipient(s).${supersedeNote}`,
     });
 
     return res.status(200).json({
@@ -142,6 +164,7 @@ const publishRevision = async (req, res, next) => {
     await session.endSession();
   }
 };
+
 const listProjectRevisions = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -162,31 +185,361 @@ const listProjectRevisions = async (req, res, next) => {
       });
     }
 
-    const userId = String(req.user._id);
-    const isMember = project.members.some(
-      (member) => String(member.user) === userId
-    );
+    const access = getProjectAccess(project, req.user._id);
 
-    if (String(project.supervisor) !== userId && !isMember) {
+    if (!access.isMember) {
       return res.status(403).json({
         success: false,
         message: "You do not have access to this project.",
       });
     }
 
-    const revisions = await DrawingRevision.find({ project: projectId })
+    // Drafts are the supervisor's working area; the rest of the team only
+    // sees revisions that have actually been issued.
+    const filter = { project: projectId };
+    if (!access.isSupervisor) filter.status = { $ne: "draft" };
+
+    const revisions = await DrawingRevision.find(filter)
       .populate("drawing", "drawingNumber title")
       .sort({ createdAt: -1 })
-      .select("-file.storageKey");
+      .select("-file.storageKey")
+      .lean();
+
+    // One aggregate gives acknowledgment progress for every revision.
+    const progress = await Acknowledgment.aggregate([
+      { $match: { project: project._id } },
+      {
+        $group: {
+          _id: "$revision",
+          total: { $sum: 1 },
+          acknowledged: {
+            $sum: { $cond: [{ $eq: ["$status", "acknowledged"] }, 1, 0] },
+          },
+          opened: {
+            $sum: { $cond: [{ $ne: ["$viewedAt", null] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const progressByRevision = new Map(
+      progress.map((p) => [String(p._id), p])
+    );
+
+    const withProgress = revisions.map((revision) => {
+      const p = progressByRevision.get(String(revision._id));
+      return {
+        ...revision,
+        ackSummary: {
+          total: p?.total || 0,
+          acknowledged: p?.acknowledged || 0,
+          opened: p?.opened || 0,
+        },
+      };
+    });
 
     return res.status(200).json({
       success: true,
-      count: revisions.length,
-      revisions,
+      count: withProgress.length,
+      revisions: withProgress,
     });
   } catch (error) {
     return next(error);
   }
 };
 
-module.exports = { publishRevision, listProjectRevisions };
+/** Load a revision plus its project, enforcing membership and draft rules. */
+async function loadRevisionForUser(req, res) {
+  const { revisionId } = req.params;
+
+  if (!mongoose.isValidObjectId(revisionId)) {
+    res.status(400).json({ success: false, message: "Invalid revision ID." });
+    return null;
+  }
+
+  const revision = await DrawingRevision.findById(revisionId);
+  const project = revision ? await Project.findById(revision.project) : null;
+
+  if (!revision || !project) {
+    res.status(404).json({ success: false, message: "Drawing revision not found." });
+    return null;
+  }
+
+  const access = getProjectAccess(project, req.user._id);
+
+  if (!access.isMember) {
+    res.status(403).json({
+      success: false,
+      message: "You do not have access to this project.",
+    });
+    return null;
+  }
+
+  if (revision.status === "draft" && !access.isSupervisor) {
+    res.status(404).json({ success: false, message: "Drawing revision not found." });
+    return null;
+  }
+
+  return { revision, project, access };
+}
+
+const getRevisionDetail = async (req, res, next) => {
+  try {
+    const loaded = await loadRevisionForUser(req, res);
+    if (!loaded) return undefined;
+
+    const { revision, project, access } = loaded;
+
+    const [
+      drawing,
+      acknowledgments,
+      clarifications,
+      activity,
+      currentRevision,
+      publisher,
+    ] = await Promise.all([
+      Drawing.findById(revision.drawing).select("drawingNumber title description").lean(),
+      Acknowledgment.find({ revision: revision._id })
+        .populate("recipient", "name email")
+        .sort({ createdAt: 1 })
+        .lean(),
+      Clarification.find({ revision: revision._id })
+        .populate("requestedBy", "name")
+        .populate("respondedBy", "name")
+        .sort({ createdAt: -1 })
+        .lean(),
+      ActivityLog.find({ revision: revision._id })
+        .populate("actor", "name")
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      // The newest published revision of the same drawing, if this one was
+      // replaced. Lets the UI warn "do not build from this".
+      revision.status === "superseded"
+        ? DrawingRevision.findOne({ drawing: revision.drawing, status: "published" })
+            .select("revisionNumber publishedAt")
+            .lean()
+        : null,
+      revision.publishedBy
+        ? User.findById(revision.publishedBy).select("name").lean()
+        : null,
+    ]);
+
+    const roleByUser = new Map(
+      project.members.map((m) => [String(m.user), m.role])
+    );
+
+    const withRole = acknowledgments.map((ack) => ({
+      ...ack,
+      recipientRole: roleByUser.get(String(ack.recipient?._id)) || null,
+    }));
+
+    const myAcknowledgment =
+      withRole.find((ack) => String(ack.recipient?._id) === String(req.user._id)) ||
+      null;
+
+    // Only the supervisor sees every recipient's status; others see their own.
+    const visibleAcknowledgments = access.isSupervisor
+      ? withRole
+      : myAcknowledgment
+        ? [myAcknowledgment]
+        : [];
+
+    // Clarifications are visible to the whole project team on purpose: a
+    // shared answer stops the same question being asked and answered twice.
+    const revisionObject = revision.toObject();
+    delete revisionObject.file.storageKey;
+
+    return res.status(200).json({
+      success: true,
+      revision: {
+        ...revisionObject,
+        drawing,
+        publishedByName: publisher?.name || null,
+      },
+      project: { _id: project._id, name: project.name, code: project.code },
+      supersededBy: currentRevision,
+      access,
+      myAcknowledgment,
+      acknowledgments: visibleAcknowledgments,
+      clarifications,
+      activity,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Issue a short-lived signed link to the drawing PDF and record that this
+ * recipient opened it. Files are never publicly addressable.
+ */
+const openRevisionFile = async (req, res, next) => {
+  try {
+    const loaded = await loadRevisionForUser(req, res);
+    if (!loaded) return undefined;
+
+    const { revision } = loaded;
+
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(revision.file.storageKey, SIGNED_URL_SECONDS);
+
+    if (error || !data?.signedUrl) {
+      return res.status(502).json({
+        success: false,
+        message: "The drawing file could not be retrieved from storage.",
+      });
+    }
+
+    // Record first view for recipients of the current published revision.
+    if (revision.status === "published") {
+      const firstView = await Acknowledgment.findOneAndUpdate(
+        { revision: revision._id, recipient: req.user._id, viewedAt: null },
+        { $set: { viewedAt: new Date() } }
+      );
+
+      if (firstView) {
+        const drawing = await Drawing.findById(revision.drawing).select("drawingNumber");
+        await logActivity({
+          project: revision.project,
+          revision: revision._id,
+          actor: req.user._id,
+          action: "revision_opened",
+          message: `${req.user.name} opened ${drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      url: data.signedUrl,
+      expiresInSeconds: SIGNED_URL_SECONDS,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Add recipients to a revision that is already published, e.g. someone who
+ * was left off the original distribution list. Each new recipient gets their
+ * own pending acknowledgment; existing ones are untouched.
+ */
+const addRecipients = async (req, res, next) => {
+  try {
+    const { revisionId } = req.params;
+    const { recipients } = req.body || {};
+
+    if (!mongoose.isValidObjectId(revisionId)) {
+      return res.status(400).json({ success: false, message: "Invalid revision ID." });
+    }
+
+    if (
+      !Array.isArray(recipients) ||
+      recipients.length === 0 ||
+      recipients.some((id) => typeof id !== "string" || !mongoose.isValidObjectId(id)) ||
+      new Set(recipients).size !== recipients.length
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Select at least one valid, unique recipient.",
+      });
+    }
+
+    const revision = await DrawingRevision.findById(revisionId).populate(
+      "drawing",
+      "drawingNumber"
+    );
+    const project = revision ? await Project.findById(revision.project) : null;
+
+    if (!revision || !project) {
+      return res.status(404).json({ success: false, message: "Drawing revision not found." });
+    }
+
+    if (!getProjectAccess(project, req.user._id).isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can add recipients.",
+      });
+    }
+
+    // Sending a superseded drawing to someone new would recreate the exact
+    // confusion this product exists to prevent.
+    if (revision.status !== "published") {
+      return res.status(409).json({
+        success: false,
+        message: "Recipients can only be added to the current published revision.",
+      });
+    }
+
+    const memberIds = new Set(project.members.map((m) => String(m.user)));
+    const existing = new Set(revision.recipients.map(String));
+    const fresh = recipients.filter((id) => !existing.has(id));
+
+    if (fresh.some((id) => !memberIds.has(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "Every recipient must belong to this project.",
+      });
+    }
+
+    if (fresh.length === 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Those people have already received this revision.",
+      });
+    }
+
+    const users = await User.find({ _id: { $in: fresh }, isActive: true }).select("name");
+
+    if (users.length !== fresh.length) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more recipients are invalid or inactive.",
+      });
+    }
+
+    await Acknowledgment.insertMany(
+      fresh.map((recipient) => ({
+        project: revision.project,
+        revision: revision._id,
+        recipient,
+        status: "pending",
+      }))
+    );
+
+    revision.recipients.push(...fresh);
+    await revision.save();
+
+    await logActivity({
+      project: revision.project,
+      revision: revision._id,
+      actor: req.user._id,
+      action: "revision_published",
+      message: `${req.user.name} issued ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber} to ${users.map((u) => u.name).join(", ")}.`,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Revision issued to ${users.map((u) => u.name).join(", ")}.`,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "One of those people already has an acknowledgment record.",
+      });
+    }
+
+    return next(error);
+  }
+};
+
+module.exports = {
+  publishRevision,
+  listProjectRevisions,
+  getRevisionDetail,
+  openRevisionFile,
+  addRecipients,
+};

@@ -26,9 +26,25 @@ const acknowledgmentSchema = new mongoose.Schema(
       default: "pending",
       required: true,
     },
+    // First time the recipient opened the drawing file. This is the only
+    // "delivery evidence" the system has: a sent message is not a seen one.
+    viewedAt: {
+      type: Date,
+      default: null,
+    },
     acknowledgedAt: {
       type: Date,
       default: null,
+    },
+    // Supervisor follow-ups, so repeated nudging is visible and rate limited.
+    lastRemindedAt: {
+      type: Date,
+      default: null,
+    },
+    reminderCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   {

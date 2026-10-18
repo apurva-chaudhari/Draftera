@@ -6,6 +6,7 @@ const Project = require("../models/Project");
 const Drawing = require("../models/Drawing");
 const DrawingRevision = require("../models/DrawingRevision");
 const supabase = require("../config/storage");
+const { logActivity } = require("../utils/activity");
 
 const uploadDrawingRevision = async (req, res, next) => {
   let uploadedStorageKey;
@@ -190,6 +191,14 @@ const uploadDrawingRevision = async (req, res, next) => {
       },
       status: "draft",
       createdBy: req.user._id,
+    });
+
+    await logActivity({
+      project: project._id,
+      revision: revision._id,
+      actor: req.user._id,
+      action: "revision_uploaded",
+      message: `${req.user.name} uploaded ${drawing.drawingNumber} Rev ${revision.revisionNumber} as a draft.`,
     });
 
     return res.status(201).json({

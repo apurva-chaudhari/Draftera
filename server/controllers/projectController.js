@@ -1,14 +1,19 @@
+const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
+const User = require("../models/User");
+const ActivityLog = require("../models/ActivityLog");
+const { getProjectAccess } = require("../utils/projectAccess");
+const { logActivity } = require("../utils/activity");
+const { loadProjectCurrency } = require("../services/currencyService");
+
+// Roles a supervisor may grant when adding someone to a project team.
+const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
 
 const createProject = async (req, res, next) => {
   try {
     // Subcontractors cannot create projects.
-    const allowedRoles = [
-      "admin",
-      "project_supervisor",
-      "site_engineer",
-    ];
+    const allowedRoles = ["admin", "project_supervisor", "site_engineer"];
 
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
@@ -94,6 +99,13 @@ const createProject = async (req, res, next) => {
       ],
     });
 
+    await logActivity({
+      project: project._id,
+      actor: req.user._id,
+      action: "project_created",
+      message: `${req.user.name} created project ${project.code}.`,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Project created successfully.",
@@ -121,20 +133,188 @@ const createProject = async (req, res, next) => {
 const getProjects = async (req, res, next) => {
   try {
     const projects = await Project.find({
-      $or: [
-        { supervisor: req.user._id },
-        { "members.user": req.user._id },
-      ],
+      $or: [{ supervisor: req.user._id }, { "members.user": req.user._id }],
     })
       .populate("supervisor", "name email")
       .sort({ createdAt: -1 })
       .lean();
 
+    // Tell the client what the caller's role is in each project.
+    const withRole = projects.map((project) => ({
+      ...project,
+      myRole: getProjectAccess(project, req.user._id).memberRole,
+      memberCount: project.members.length,
+    }));
+
     return res.status(200).json({
       success: true,
-      count: projects.length,
-      projects,
+      count: withRole.length,
+      projects: withRole,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/** Load a project and confirm the caller belongs to it. */
+async function loadAccessibleProject(req, res) {
+  const { projectId } = req.params;
+
+  if (!mongoose.isValidObjectId(projectId)) {
+    res.status(400).json({ success: false, message: "Invalid project ID." });
+    return null;
+  }
+
+  const project = await Project.findById(projectId);
+
+  if (!project) {
+    res.status(404).json({ success: false, message: "Project not found." });
+    return null;
+  }
+
+  const access = getProjectAccess(project, req.user._id);
+
+  if (!access.isMember) {
+    res.status(403).json({
+      success: false,
+      message: "You do not have access to this project.",
+    });
+    return null;
+  }
+
+  return { project, access };
+}
+
+const getProjectById = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    const project = await Project.findById(loaded.project._id)
+      .populate("supervisor", "name email")
+      .populate("members.user", "name email")
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      project,
+      access: loaded.access,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const addProjectMember = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    const { project, access } = loaded;
+
+    if (!access.isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can add team members.",
+      });
+    }
+
+    const { email, role } = req.body || {};
+
+    if (typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter the email address of a registered user.",
+      });
+    }
+
+    if (!ASSIGNABLE_MEMBER_ROLES.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Choose a role: site engineer or subcontractor.",
+      });
+    }
+
+    const user = await User.findOne({
+      email: email.trim().toLowerCase(),
+      isActive: true,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "No registered user has that email. Ask them to create a Draftera account first.",
+      });
+    }
+
+    // The $ne guard makes the "already a member" check atomic.
+    const result = await Project.updateOne(
+      { _id: project._id, "members.user": { $ne: user._id } },
+      {
+        $push: {
+          members: { user: user._id, role, addedBy: req.user._id },
+        },
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(409).json({
+        success: false,
+        message: "This person is already on the project team.",
+      });
+    }
+
+    await logActivity({
+      project: project._id,
+      actor: req.user._id,
+      action: "member_added",
+      message: `${req.user.name} added ${user.name} as ${role.replace("_", " ")}.`,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `${user.name} added to the project.`,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getProjectCurrency = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    // The currency matrix exposes everyone's acknowledgment status, which is
+    // the supervisor's monitoring view.
+    if (!loaded.access.isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can view revision currency.",
+      });
+    }
+
+    const currency = await loadProjectCurrency(loaded.project._id);
+
+    return res.status(200).json({ success: true, ...currency });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getProjectActivity = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    const activity = await ActivityLog.find({ project: loaded.project._id })
+      .populate("actor", "name")
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    return res.status(200).json({ success: true, activity });
   } catch (error) {
     return next(error);
   }
@@ -143,4 +323,8 @@ const getProjects = async (req, res, next) => {
 module.exports = {
   createProject,
   getProjects,
+  getProjectById,
+  addProjectMember,
+  getProjectCurrency,
+  getProjectActivity,
 };
