@@ -132,6 +132,8 @@ async function main() {
     status: "published",
     publishedBy: supervisor._id,
     publishedAt: daysAgo(2),
+    // Deadline was yesterday, so the steel subcontractor shows as overdue.
+    ackDueAt: daysAgo(1),
     recipients: [engineer._id, steel._id],
     createdBy: supervisor._id,
   });
@@ -182,6 +184,7 @@ async function main() {
     status: "published",
     publishedBy: supervisor._id,
     publishedAt: daysAgo(1),
+    ackDueAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
     recipients: [engineer._id],
     createdBy: supervisor._id,
   });
