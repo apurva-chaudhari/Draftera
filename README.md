@@ -17,11 +17,18 @@ A subcontractor builds from an old drawing while the supervisor assumes everyone
 | Delivery evidence | A recipient is "opened" only when they open the file through Draftera |
 | Acknowledgment | Per person, per revision; blocked until the drawing is opened; never carries over to a new revision |
 | **Revision currency** | For every drawing, who is current, pending, or **at risk** (confirmed an old revision, not the new one) |
+| Deadlines | Optional "acknowledge by" time per revision; late people are flagged **Overdue** |
 | Clarifications | Questions and answers attached to the revision, with an explicit resolve step |
-| Audit trail | Every action recorded with user and time |
+| Revision history | Every revision of a drawing with its change note, so "what changed?" is one click |
+| Distribution report | One-click CSV: who received, opened, acknowledged, who is overdue or at risk |
+| Audit trail | Every action recorded with user and time; publishing writes its audit entry in the same transaction |
 | Access control | Per-project roles, private files, expiring signed links |
 
 Acknowledgment means *receipt*, not approval or understanding. The UI says so.
+
+## Design
+
+A light "drafting table" theme: drawing-paper background with a faint grid, blueprint-navy ink, safety-orange accents, monospaced drawing numbers, and a drawing-sheet **title block** on every revision. It works on phones (bottom navigation, card-style tables, 44 px touch targets), tablets and laptops.
 
 ## Tech stack
 
@@ -70,9 +77,11 @@ Create a **private** Supabase bucket called `drawing-revisions` first.
 ## Tests
 
 ```bash
-cd server && npm test     # currency logic + API access rules
-cd client && npm run lint
+cd server && npm test                    # unit + API smoke (+ workflow suite if TEST_MONGODB_URI is set)
+cd client && npm test && npm run lint && npm run build
 ```
+
+The end-to-end workflow suite needs a throwaway MongoDB replica set; CI provides one. See [docs/testing.md](docs/testing.md) for every test case and the manual device checklist.
 
 ## API overview
 
@@ -84,6 +93,7 @@ cd client && npm run lint
 | POST | `/api/projects/:id/members` | Add a team member (supervisor) |
 | GET | `/api/projects/:id/currency` | Revision currency matrix (supervisor) |
 | GET | `/api/projects/:id/activity` | Audit trail |
+| GET | `/api/projects/:id/report.csv` | Distribution report download (supervisor) |
 | POST | `/api/drawings/upload` | Upload a draft revision |
 | POST | `/api/drawings/:id/publish` | Publish to recipients |
 | POST | `/api/drawings/revision/:id/recipients` | Issue to people left off |
@@ -95,7 +105,7 @@ cd client && npm run lint
 
 ## Documentation
 
-[Problem analysis](docs/problem-analysis.md) · [Evidence register](docs/evidence-register.md) · [Requirements](docs/requirements.md) · [Architecture](docs/system-architecture.md) · [**Design decisions and trade-offs**](docs/design-decisions.md) · [Demo script](docs/demo-script.md) · [Deployment](docs/deployment.md) · [Defense notes](docs/defense-notes.md)
+[Problem analysis](docs/problem-analysis.md) · [Evidence register](docs/evidence-register.md) · [Requirements](docs/requirements.md) · [Architecture](docs/system-architecture.md) · [**Design decisions and trade-offs**](docs/design-decisions.md) · [Testing](docs/testing.md) · [Security](docs/security.md) · [Demo script](docs/demo-script.md) · [Deployment](docs/deployment.md) · [Defense notes](docs/defense-notes.md)
 
 ## Known limitations
 

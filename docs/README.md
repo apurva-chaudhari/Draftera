@@ -8,5 +8,7 @@
 | [system-architecture.md](system-architecture.md) | Architecture and business rules |
 | [design-decisions.md](design-decisions.md) | Decisions, alternatives, trade-offs, limitations |
 | [demo-script.md](demo-script.md) | Five-minute walkthrough |
+| [testing.md](testing.md) | Test cases, how to run them, device checklist |
+| [security.md](security.md) | Controls, known gaps, rotating secrets |
 | [deployment.md](deployment.md) | Vercel + Render + Atlas + Supabase |
 | [defense-notes.md](defense-notes.md) | Likely discussion questions |

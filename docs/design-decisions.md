@@ -63,6 +63,30 @@ per revision per hour. *Alternative:* email/WhatsApp. *Deferred* because it
 needs a provider, verified sender and consent handling, which does not fit the
 time box. It is the first item in "Future work".
 
+### D9. Optional deadlines and an "overdue" state
+A supervisor can require acknowledgment within 24 h, 48 h, 3 or 7 days. Overdue
+applies only to people who were issued the drawing and are still pending or
+only opened it; someone who was never issued it is *not issued*, not late.
+*Trade-off:* a deadline is a nudge, not enforcement. It exists so silence is
+visible rather than invisible.
+
+### D10. Audit entries inside the publish transaction
+Publishing supersedes the old revision, creates the acknowledgments and writes
+the audit record in one transaction. If the audit write fails, nothing is
+published, so a state change can never exist without its trail. Other events
+(opened, reminded, question) are logged best-effort so a logging failure never
+blocks a person doing their job.
+
+### D11. A CSV report instead of PDF
+A supervisor usually needs the status in a spreadsheet or an email. CSV opens
+everywhere. Cells beginning with `= + - @` are neutralised because names and
+titles are user input and could otherwise run as spreadsheet formulas.
+
+### D12. A confirmation step before publishing
+Publishing supersedes the previous revision and asks people to act, and it
+cannot be undone from the UI. The confirm screen states who will receive it,
+what it supersedes and who is being left out.
+
 ## 3. Technology choices
 
 | Choice | Reason | Alternative considered |
@@ -89,7 +113,8 @@ time box. It is the first item in "Future work".
 - PDF only, 10 MB limit; no markup, comparison or CAD formats.
 - Removing a team member is not implemented.
 - Acknowledgment is not a legal sign-off and Draftera does not replace a formal document-control procedure.
-- Automated tests cover the revision-currency logic and API access rules. The full database workflow was verified manually, not with an automated integration suite.
+- Automated tests cover the revision-currency logic, report, deadlines and access rules. An end-to-end workflow suite exists (`server/tests/workflow.integration.test.js`) and runs against a real test database in CI; it has not been run in every environment, so run it locally before relying on it.
+- Component rendering was checked with a render harness, not a real browser. Test each page on a phone, tablet and laptop (see `docs/testing.md`).
 
 ## 6. Future work, in priority order
 
@@ -98,4 +123,5 @@ time box. It is the first item in "Future work".
 3. Visual comparison between revisions (highlight what changed).
 4. Acknowledgment deadlines and escalation.
 5. httpOnly cookie sessions and refresh tokens.
-6. Integration tests against a test database.
+6. Visual comparison of two PDF revisions.
+7. Remove or change a member's role on a project.
