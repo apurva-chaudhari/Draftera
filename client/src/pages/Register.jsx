@@ -10,6 +10,7 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("site_engineer");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,11 +43,11 @@ function Register() {
         name: trimmedName,
         email: trimmedEmail,
         password,
+        role,
       });
 
-      // Registration will sign the user in after the auth service
-      // is updated in a later step.
-      navigate("/login", { replace: true });
+      // Registration also signs the user in, so go straight to the app.
+      navigate("/", { replace: true });
     } catch (requestError) {
       setError(
         requestError.message || "Unable to create your account. Please try again."
@@ -105,6 +106,17 @@ function Register() {
               maxLength={254}
               disabled={isSubmitting}
             />
+
+            <label htmlFor="register-role">I work as a</label>
+            <select
+              id="register-role"
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              disabled={isSubmitting}
+            >
+              <option value="site_engineer">Site engineer / supervisor</option>
+              <option value="subcontractor">Subcontractor</option>
+            </select>
 
             <label htmlFor="register-password">Password</label>
             <input

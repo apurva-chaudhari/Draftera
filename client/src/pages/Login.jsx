@@ -2,6 +2,16 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/authService.js";
 
+// Shown only when the deployment was seeded with demo data
+// (set VITE_SHOW_DEMO=true at build time).
+const SHOW_DEMO = import.meta.env.VITE_SHOW_DEMO === "true";
+const DEMO_PASSWORD = "Draftera#2026";
+const DEMO_ACCOUNTS = [
+  { label: "Supervisor", email: "supervisor@draftera.demo" },
+  { label: "Site engineer", email: "engineer@draftera.demo" },
+  { label: "Subcontractor", email: "steel@draftera.demo" },
+];
+
 function Login() {
   const navigate = useNavigate();
 
@@ -91,6 +101,26 @@ function Login() {
               {!isSubmitting && <span aria-hidden="true">→</span>}
             </button>
           </form>
+
+          {SHOW_DEMO && (
+            <div className="demo-box">
+              <p>Try the demo as:</p>
+              <div>
+                {DEMO_ACCOUNTS.map((account) => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(account.email);
+                      setPassword(DEMO_PASSWORD);
+                    }}
+                  >
+                    {account.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <p className="auth-footer">
             New to Draftera? <Link to="/register">Create an account</Link>
