@@ -20,7 +20,13 @@ function idOf(value) {
   return String(value && value._id ? value._id : value);
 }
 
-function buildCurrencyMatrix({ members, drawings, revisions, acknowledgments }) {
+function buildCurrencyMatrix({
+  members,
+  drawings,
+  revisions,
+  acknowledgments,
+  now = new Date(),
+}) {
   const audience = members.filter((m) => AUDIENCE_ROLES.includes(m.role));
 
   const rows = [];
@@ -70,12 +76,22 @@ function buildCurrencyMatrix({ members, drawings, revisions, acknowledgments }) 
       else if (currentAck && currentAck.viewedAt) state = "opened";
       else state = "pending";
 
+      const dueAt = current.ackDueAt || null;
+
       return {
         user: member.user,
         role: member.role,
         state,
         lastAckedRevision,
         atRisk: state !== "current" && Boolean(lastAckedRevision),
+        // Overdue: a deadline was set, it has passed, and the person is not
+        // current. Someone who was never issued the drawing cannot be late.
+        overdue:
+          Boolean(dueAt) &&
+          new Date(dueAt) < now &&
+          ["pending", "opened"].includes(state),
+        dueAt,
+        reminderCount: currentAck?.reminderCount || 0,
         sentAt: current.publishedAt,
         viewedAt: currentAck?.viewedAt || null,
         acknowledgedAt: currentAck?.acknowledgedAt || null,
@@ -89,6 +105,7 @@ function buildCurrencyMatrix({ members, drawings, revisions, acknowledgments }) 
         _id: current._id,
         revisionNumber: current.revisionNumber,
         publishedAt: current.publishedAt,
+        ackDueAt: current.ackDueAt || null,
       },
       people,
       summary: {
@@ -97,6 +114,7 @@ function buildCurrencyMatrix({ members, drawings, revisions, acknowledgments }) 
         pending: people.filter((p) => p.state === "pending").length,
         notIssued: people.filter((p) => p.state === "not_issued").length,
         atRisk: people.filter((p) => p.atRisk).length,
+        overdue: people.filter((p) => p.overdue).length,
       },
     });
   }
@@ -106,7 +124,7 @@ function buildCurrencyMatrix({ members, drawings, revisions, acknowledgments }) 
       for (const key of Object.keys(sum)) sum[key] += row.summary[key];
       return sum;
     },
-    { current: 0, opened: 0, pending: 0, notIssued: 0, atRisk: 0 }
+    { current: 0, opened: 0, pending: 0, notIssued: 0, atRisk: 0, overdue: 0 }
   );
 
   return { drawings: rows, totals };

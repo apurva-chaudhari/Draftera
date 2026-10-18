@@ -15,7 +15,7 @@ async function loadProjectCurrency(projectId) {
   const [drawings, revisions, acknowledgments] = await Promise.all([
     Drawing.find({ project: projectId }).sort({ drawingNumber: 1 }).lean(),
     DrawingRevision.find({ project: projectId })
-      .select("drawing revisionNumber status publishedAt recipients")
+      .select("drawing revisionNumber status publishedAt ackDueAt recipients")
       .lean(),
     Acknowledgment.find({ project: projectId }).lean(),
   ]);

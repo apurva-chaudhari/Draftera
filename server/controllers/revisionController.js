@@ -12,6 +12,9 @@ const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
 
 const STORAGE_BUCKET = "drawing-revisions";
+
+// Deadlines a supervisor may set when publishing (hours after publishing).
+const ALLOWED_DUE_HOURS = [24, 48, 72, 168];
 const SIGNED_URL_SECONDS = 120;
 
 // Small helper so transaction code can fail with an HTTP status.
@@ -23,12 +26,19 @@ function httpError(statusCode, message) {
 
 const publishRevision = async (req, res, next) => {
   const { revisionId } = req.params;
-  const { recipients } = req.body || {};
+  const { recipients, dueInHours = null } = req.body || {};
 
   if (!mongoose.isValidObjectId(revisionId)) {
     return res.status(400).json({
       success: false,
       message: "Invalid revision ID.",
+    });
+  }
+
+  if (dueInHours !== null && !ALLOWED_DUE_HOURS.includes(dueInHours)) {
+    return res.status(400).json({
+      success: false,
+      message: "Choose a valid acknowledgment deadline or none.",
     });
   }
 
@@ -113,6 +123,9 @@ const publishRevision = async (req, res, next) => {
       revision.status = "published";
       revision.publishedBy = req.user._id;
       revision.publishedAt = new Date();
+      revision.ackDueAt = dueInHours
+        ? new Date(revision.publishedAt.getTime() + dueInHours * 3600000)
+        : null;
 
       await revision.save({ session });
 
@@ -131,19 +144,24 @@ const publishRevision = async (req, res, next) => {
         .session(session);
       drawingNumber = drawing?.drawingNumber;
 
+      const supersedeNote = supersededNumbers.length
+        ? ` It supersedes Rev ${supersededNumbers.join(", ")}.`
+        : "";
+
+      // The audit record is written inside the transaction, so a published
+      // revision can never exist without its audit entry.
+      await logActivity(
+        {
+          project: revision.project,
+          revision: revision._id,
+          actor: req.user._id,
+          action: "revision_published",
+          message: `${req.user.name} published ${drawingNumber} Rev ${revision.revisionNumber} to ${recipients.length} recipient(s).${supersedeNote}`,
+        },
+        { session }
+      );
+
       publishedRevision = revision.toObject();
-    });
-
-    const supersedeNote = supersededNumbers.length
-      ? ` It supersedes Rev ${supersededNumbers.join(", ")}.`
-      : "";
-
-    await logActivity({
-      project: publishedRevision.project,
-      revision: publishedRevision._id,
-      actor: req.user._id,
-      action: "revision_published",
-      message: `${req.user.name} published ${drawingNumber} Rev ${publishedRevision.revisionNumber} to ${recipients.length} recipient(s).${supersedeNote}`,
     });
 
     return res.status(200).json({
@@ -297,6 +315,7 @@ const getRevisionDetail = async (req, res, next) => {
       activity,
       currentRevision,
       publisher,
+      history,
     ] = await Promise.all([
       Drawing.findById(revision.drawing).select("drawingNumber title description").lean(),
       Acknowledgment.find({ revision: revision._id })
@@ -323,6 +342,15 @@ const getRevisionDetail = async (req, res, next) => {
       revision.publishedBy
         ? User.findById(revision.publishedBy).select("name").lean()
         : null,
+      // Every revision of this drawing, newest first, so the reader can see
+      // how the drawing changed over time. Drafts stay private.
+      DrawingRevision.find({
+        drawing: revision.drawing,
+        ...(access.isSupervisor ? {} : { status: { $ne: "draft" } }),
+      })
+        .select("revisionNumber status issueDate publishedAt changeSummary")
+        .sort({ createdAt: -1 })
+        .lean(),
     ]);
 
     const roleByUser = new Map(
@@ -360,6 +388,7 @@ const getRevisionDetail = async (req, res, next) => {
       project: { _id: project._id, name: project.name, code: project.code },
       supersededBy: currentRevision,
       access,
+      history,
       myAcknowledgment,
       acknowledgments: visibleAcknowledgments,
       clarifications,
