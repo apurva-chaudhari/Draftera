@@ -19,7 +19,14 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm ci
+      # A single-node replica set, because publishing uses transactions.
+      - uses: supercharge/mongodb-github-action@1.11.0
+        with:
+          mongodb-version: "7.0"
+          mongodb-replica-set: rs0
       - run: npm test
+        env:
+          TEST_MONGODB_URI: mongodb://localhost:27017/draftera_test?replicaSet=rs0
 
   client:
     runs-on: ubuntu-latest
