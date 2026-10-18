@@ -2,7 +2,8 @@ import { useState } from "react";
 import workflowService from "../../services/workflowService.js";
 import { RecipientStatus } from "../ui/Badge.jsx";
 import { Alert } from "../ui/Feedback.jsx";
-import { formatDateTime, roleLabel, timeAgo } from "../../utils/format.js";
+import Badge from "../ui/Badge.jsx";
+import { dueLabel, formatDateTime, isOverdue, roleLabel, timeAgo } from "../../utils/format.js";
 
 /** Supervisor view: every recipient and exactly how far they have got. */
 function RecipientStatusTable({ revision, acknowledgments, onChanged }) {
@@ -34,6 +35,7 @@ function RecipientStatusTable({ revision, acknowledgments, onChanged }) {
           <h2>Recipients</h2>
           <p>
             {acknowledgments.filter((a) => a.status === "acknowledged").length} of {acknowledgments.length} acknowledged
+            {revision.status === "published" && revision.ackDueAt && <> · {dueLabel(revision.ackDueAt)}</>}
           </p>
         </div>
       </div>
@@ -41,7 +43,7 @@ function RecipientStatusTable({ revision, acknowledgments, onChanged }) {
       {message && <div style={{ padding: "16px 22px 0" }}><Alert kind={message.kind}>{message.text}</Alert></div>}
 
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table-cards">
           <thead>
             <tr>
               <th>Person</th>
@@ -54,14 +56,21 @@ function RecipientStatusTable({ revision, acknowledgments, onChanged }) {
           <tbody>
             {acknowledgments.map((ack) => (
               <tr key={ack._id}>
-                <td>
+                <td data-label="Person">
                   <span className="cell-title">{ack.recipient?.name}</span>
                   <span className="cell-sub">{roleLabel(ack.recipientRole)}</span>
                 </td>
-                <td><RecipientStatus status={stateOf(ack)} /></td>
-                <td>{formatDateTime(ack.viewedAt)}</td>
-                <td>{formatDateTime(ack.acknowledgedAt)}</td>
-                <td style={{ textAlign: "right" }}>
+                <td data-label="Status">
+                  <div>
+                    <RecipientStatus status={stateOf(ack)} />
+                    {stateOf(ack) !== "acknowledged" && revision.status === "published" && isOverdue(revision.ackDueAt) && (
+                      <div style={{ marginTop: 4 }}><Badge tone="danger">Overdue</Badge></div>
+                    )}
+                  </div>
+                </td>
+                <td data-label="Opened">{formatDateTime(ack.viewedAt)}</td>
+                <td data-label="Acknowledged">{formatDateTime(ack.acknowledgedAt)}</td>
+                <td data-label="" style={{ textAlign: "right" }}>
                   {ack.status !== "acknowledged" && revision.status === "published" && (
                     <button type="button" className="btn btn-secondary btn-sm" disabled={busyId === ack.recipient._id} onClick={() => remind(ack.recipient._id)}>
                       {busyId === ack.recipient._id ? "Sending…" : "Remind"}

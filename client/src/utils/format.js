@@ -61,3 +61,16 @@ export function greeting() {
   if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+/** True when a deadline exists and has passed. */
+export function isOverdue(dueAt, now = Date.now()) {
+  return Boolean(dueAt) && new Date(dueAt).getTime() < now;
+}
+
+/** "Due 3 Nov, 5:30 pm" or "Overdue since 3 Nov". */
+export function dueLabel(dueAt, now = Date.now()) {
+  if (!dueAt) return "No deadline";
+  return isOverdue(dueAt, now)
+    ? `Overdue since ${dateTimeFormatter.format(new Date(dueAt))}`
+    : `Due ${dateTimeFormatter.format(new Date(dueAt))}`;
+}
