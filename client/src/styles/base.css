@@ -16,7 +16,12 @@ body {
   min-width: 320px;
   min-height: 100%;
   margin: 0;
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  /* Drafting-paper grid: 24px squares with a heavier line every 120px. */
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 #root {
@@ -52,7 +57,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
-  outline: 3px solid #8bb5f0;
+  outline: 3px solid var(--color-accent-bright);
   outline-offset: 2px;
 }
 
@@ -65,8 +70,14 @@ textarea:disabled {
 }
 
 ::selection {
-  background: #dce9fc;
-  color: #193e73;
+  background: #ffd9bf;
+  color: var(--color-ink);
+}
+
+/* Headings and drawing identifiers use the engineering typeface. */
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.2px;
 }
 
 .visually-hidden {
