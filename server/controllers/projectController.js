@@ -3,9 +3,11 @@ const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const User = require("../models/User");
 const ActivityLog = require("../models/ActivityLog");
+const Clarification = require("../models/Clarification");
 const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
 const { loadProjectCurrency } = require("../services/currencyService");
+const { buildDistributionCsv } = require("../utils/report");
 
 // Roles a supervisor may grant when adding someone to a project team.
 const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
@@ -303,6 +305,56 @@ const getProjectCurrency = async (req, res, next) => {
   }
 };
 
+/** Download the distribution report as a CSV file (supervisor only). */
+const getProjectReport = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    if (!loaded.access.isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can export reports.",
+      });
+    }
+
+    const [currency, openQuestions] = await Promise.all([
+      loadProjectCurrency(loaded.project._id),
+      Clarification.aggregate([
+        {
+          $match: {
+            project: loaded.project._id,
+            status: { $in: ["open", "answered"] },
+          },
+        },
+        { $group: { _id: "$revision", count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const openQuestionsByRevision = Object.fromEntries(
+      openQuestions.map((row) => [String(row._id), row.count])
+    );
+
+    const csv = buildDistributionCsv({
+      project: loaded.project,
+      currency,
+      openQuestionsByRevision,
+    });
+
+    const date = new Date().toISOString().slice(0, 10);
+
+    res.set({
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${loaded.project.code}-distribution-report-${date}.csv"`,
+      "Cache-Control": "no-store",
+    });
+
+    return res.status(200).send(csv);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const getProjectActivity = async (req, res, next) => {
   try {
     const loaded = await loadAccessibleProject(req, res);
@@ -327,4 +379,5 @@ module.exports = {
   addProjectMember,
   getProjectCurrency,
   getProjectActivity,
+  getProjectReport,
 };
