@@ -22,7 +22,7 @@ function AckProgress({ summary, status }) {
 function RevisionTable({ revisions }) {
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table table-cards">
         <thead>
           <tr>
             <th>Drawing</th>
@@ -36,15 +36,15 @@ function RevisionTable({ revisions }) {
         <tbody>
           {revisions.map((revision) => (
             <tr key={revision._id} className={revision.status === "superseded" ? "dim" : ""}>
-              <td>
-                <span className="cell-title">{revision.drawing?.drawingNumber}</span>
+              <td data-label="Drawing">
+                <span className="cell-title mono">{revision.drawing?.drawingNumber}</span>
                 <span className="cell-sub">{revision.drawing?.title}</span>
               </td>
-              <td><RevChip revision={revision.revisionNumber} superseded={revision.status === "superseded"} /></td>
-              <td><RevisionStatus status={revision.status} /></td>
-              <td>{formatDate(revision.issueDate)}</td>
-              <td><AckProgress summary={revision.ackSummary} status={revision.status} /></td>
-              <td style={{ textAlign: "right" }}>
+              <td data-label="Rev"><RevChip revision={revision.revisionNumber} superseded={revision.status === "superseded"} /></td>
+              <td data-label="Status"><RevisionStatus status={revision.status} /></td>
+              <td data-label="Issued">{formatDate(revision.issueDate)}</td>
+              <td data-label="Acknowledged"><AckProgress summary={revision.ackSummary} status={revision.status} /></td>
+              <td data-label="" style={{ textAlign: "right" }}>
                 <Link to={`/revisions/${revision._id}`}>
                   {revision.status === "draft" ? "Review & publish" : "Open"}
                 </Link>

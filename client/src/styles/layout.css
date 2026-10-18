@@ -5,15 +5,29 @@
   min-height: 100vh;
 }
 
+/* Hazard-stripe band: a small nod to the construction site. */
+.hazard-band {
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-accent-bright) 0 10px,
+    var(--color-ink) 10px 20px
+  );
+}
+
 .sidebar {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 22px 16px;
+  padding: 0 16px 22px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
+}
+
+.sidebar .hazard-band {
+  margin: 0 -16px 22px;
 }
 
 .sidebar-brand {
@@ -28,16 +42,6 @@
   text-decoration: none;
 }
 
-.sidebar-logo {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 800;
-}
 
 .sidebar-brand strong {
   font-size: 17px;
@@ -69,7 +73,8 @@
 
 .sidebar-link.active {
   background: var(--color-primary-soft);
-  color: var(--color-primary);
+  color: var(--color-ink);
+  box-shadow: inset 3px 0 0 var(--color-accent-bright);
 }
 
 .sidebar-link svg {
@@ -135,7 +140,8 @@
 
 .page-header h1 {
   font-size: clamp(24px, 3vw, 30px);
-  letter-spacing: -0.8px;
+  letter-spacing: -0.6px;
+  color: var(--color-ink);
 }
 
 .page-header p {
@@ -240,5 +246,55 @@
 
   .page-header {
     flex-direction: column;
+  }
+}
+
+/* ---------- Phone navigation ---------- */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .bottom-nav {
+    position: fixed;
+    z-index: 15;
+    inset: auto 0 0 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    height: var(--bottom-nav-height);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 14px rgba(20, 33, 61, 0.06);
+  }
+
+  .bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .bottom-nav a:hover {
+    text-decoration: none;
+  }
+
+  .bottom-nav a.active {
+    color: var(--color-ink);
+    box-shadow: inset 0 3px 0 var(--color-accent-bright);
+    background: var(--color-primary-soft);
+  }
+
+  .content {
+    padding-bottom: calc(var(--bottom-nav-height) + 32px);
+  }
+
+  .mobile-bar .hazard-band {
+    position: absolute;
+    inset: 0 0 auto 0;
   }
 }

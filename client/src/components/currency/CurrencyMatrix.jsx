@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import workflowService from "../../services/workflowService.js";
 import drawingService from "../../services/drawingService.js";
-import { RecipientStatus } from "../ui/Badge.jsx";
+import Badge, { RecipientStatus } from "../ui/Badge.jsx";
 import { Alert, EmptyState } from "../ui/Feedback.jsx";
 import RevChip from "../ui/RevChip.jsx";
-import { formatDate, formatDateTime, roleLabel, timeAgo } from "../../utils/format.js";
+import { dueLabel, formatDate, formatDateTime, roleLabel, timeAgo } from "../../utils/format.js";
 
 /**
  * The supervisor's answer to "does everyone have the latest drawing?".
@@ -62,6 +62,12 @@ function CurrencyMatrix({ data, onChanged }) {
     <div className="stack">
       {message && <Alert kind={message.kind}>{message.text}</Alert>}
 
+      {totals.overdue > 0 && (
+        <Alert kind="error">
+          <strong>{totals.overdue} {totals.overdue === 1 ? "acknowledgment is" : "acknowledgments are"} overdue.</strong> The deadline has passed without confirmation.
+        </Alert>
+      )}
+
       {totals.atRisk > 0 ? (
         <Alert kind="warning">
           <strong>{totals.atRisk} {totals.atRisk === 1 ? "person has" : "people have"} not confirmed the latest revision</strong> after
@@ -82,7 +88,7 @@ function CurrencyMatrix({ data, onChanged }) {
         <div className="card" key={row.drawing._id}>
           <div className="card-header">
             <div className="matrix-head">
-              <h2>{row.drawing.drawingNumber}</h2>
+              <h2 className="mono">{row.drawing.drawingNumber}</h2>
               <span style={{ color: "var(--color-text-muted)", fontSize: 13.5 }}>{row.drawing.title}</span>
             </div>
             <div className="matrix-head">
@@ -93,7 +99,7 @@ function CurrencyMatrix({ data, onChanged }) {
           </div>
 
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead>
                 <tr>
                   <th>Person</th>
@@ -110,21 +116,24 @@ function CurrencyMatrix({ data, onChanged }) {
 
                   return (
                     <tr key={person.user._id}>
-                      <td>
+                      <td data-label="Person">
                         <span className="cell-title">{person.user.name}</span>
                         <span className="cell-sub">{roleLabel(person.role)}</span>
                       </td>
-                      <td>
+                      <td data-label="Status">
+                        <div>
                         <RecipientStatus status={person.state} />
+                        {person.overdue && <> <Badge tone="danger">Overdue</Badge></>}
                         {person.atRisk && (
                           <span className="risk-note">
                             Last acknowledged Rev {person.lastAckedRevision}. May still be working from it.
                           </span>
                         )}
+                        </div>
                       </td>
-                      <td>{formatDateTime(person.viewedAt)}</td>
-                      <td>{formatDateTime(person.acknowledgedAt)}</td>
-                      <td style={{ textAlign: "right" }}>
+                      <td data-label="Opened">{formatDateTime(person.viewedAt)}</td>
+                      <td data-label="Acknowledged">{formatDateTime(person.acknowledgedAt)}</td>
+                      <td data-label="" style={{ textAlign: "right" }}>
                         {canRemind && (
                           <button type="button" className="btn btn-secondary btn-sm" disabled={busyKey === key} onClick={() => remind(row.currentRevision._id, person)}>
                             {busyKey === key ? "Sending…" : "Remind"}
@@ -147,7 +156,8 @@ function CurrencyMatrix({ data, onChanged }) {
           </div>
 
           <div className="card-body" style={{ paddingTop: 12, paddingBottom: 14, color: "var(--color-text-faint)", fontSize: 12.5 }}>
-            Issued {formatDate(row.currentRevision.publishedAt)}. Acknowledgment confirms receipt only; it is not approval.
+            Issued {formatDate(row.currentRevision.publishedAt)}
+            {row.currentRevision.ackDueAt && <> · {dueLabel(row.currentRevision.ackDueAt)}</>}. Acknowledgment confirms receipt only; it is not approval.
           </div>
         </div>
       ))}

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/authService.js";
+import BlueprintArt from "../components/ui/BlueprintArt.jsx";
+import Logo from "../components/ui/Logo.jsx";
 
 // Shown only when the deployment was seeded with demo data
 // (set VITE_SHOW_DEMO=true at build time).
@@ -42,7 +44,7 @@ function Login() {
   return (
     <main className="auth-page">
       <section className="auth-brand-panel">
-        <div className="brand-mark">D</div>
+        <Logo size={48} />
         <p className="brand-name">Draftera</p>
         <p className="brand-description">
           One source of truth for every drawing revision.
@@ -51,6 +53,7 @@ function Login() {
           <span className="brand-note-dot" />
           Built for construction teams
         </div>
+        <BlueprintArt />
       </section>
 
       <section className="auth-form-panel">

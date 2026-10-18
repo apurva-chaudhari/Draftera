@@ -19,7 +19,23 @@ function ProjectDetail() {
   const [showUpload, setShowUpload] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
   const tab = searchParams.get("tab") || "drawings";
+
+  async function handleDownloadReport() {
+    setDownloadError("");
+    setDownloading(true);
+
+    try {
+      await projectService.downloadReport(projectId);
+    } catch (requestError) {
+      setDownloadError(requestError.message);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   const { data, error, reload: load } = useResource(projectId, async () => {
     const [projectResponse, revisionResponse, activityResponse] = await Promise.all([
@@ -84,6 +100,11 @@ function ProjectDetail() {
         actions={
           <>
             <ProjectStatus status={project.status} />
+            {access.isSupervisor && (
+              <button type="button" className="btn btn-secondary" onClick={handleDownloadReport} disabled={downloading}>
+                {downloading ? "Preparing…" : "Download report (CSV)"}
+              </button>
+            )}
             {access.isSupervisor && project.status === "active" && (
               <button type="button" className="btn btn-primary" onClick={() => setShowUpload((v) => !v)}>
                 {showUpload ? "Close" : "Upload revision"}
@@ -92,6 +113,8 @@ function ProjectDetail() {
           </>
         }
       />
+
+      {downloadError && <Alert kind="error">{downloadError}</Alert>}
 
       {showUpload && (
         <UploadRevisionForm

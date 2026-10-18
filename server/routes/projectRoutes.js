@@ -7,6 +7,7 @@ const {
   addProjectMember,
   getProjectCurrency,
   getProjectActivity,
+  getProjectReport,
 } = require("../controllers/projectController");
 
 const router = express.Router();
@@ -20,5 +21,6 @@ router.get("/:projectId", getProjectById);
 router.post("/:projectId/members", addProjectMember);
 router.get("/:projectId/currency", getProjectCurrency);
 router.get("/:projectId/activity", getProjectActivity);
+router.get("/:projectId/report.csv", getProjectReport);
 
 module.exports = router;

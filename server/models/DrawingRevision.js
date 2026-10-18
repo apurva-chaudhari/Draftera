@@ -73,6 +73,12 @@ const drawingRevisionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Optional deadline for recipients to acknowledge. After this time an
+    // unacknowledged revision is reported as overdue.
+    ackDueAt: {
+      type: Date,
+      default: null,
+    },
     recipients: [
       {
         type: mongoose.Schema.Types.ObjectId,

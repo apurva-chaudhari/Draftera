@@ -4,7 +4,7 @@ import workflowService from "../services/workflowService.js";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
 import RevChip from "../components/ui/RevChip.jsx";
 import { RecipientStatus } from "../components/ui/Badge.jsx";
-import { formatDateTime } from "../utils/format.js";
+import { dueLabel, formatDateTime, isOverdue } from "../utils/format.js";
 
 function Row({ ack }) {
   const state =
@@ -14,12 +14,15 @@ function Row({ ack }) {
     <Link className="list-item" to={`/revisions/${ack.revision._id}`}>
       <div>
         <span className="cell-title">
-          {ack.revision.drawing?.drawingNumber} · {ack.revision.drawing?.title}
+          <span className="mono">{ack.revision.drawing?.drawingNumber}</span> · {ack.revision.drawing?.title}
         </span>
         <span className="cell-sub">
           {ack.project?.code} · {ack.status === "acknowledged"
             ? `acknowledged ${formatDateTime(ack.acknowledgedAt)}`
             : `issued ${formatDateTime(ack.revision.publishedAt)}`}
+          {ack.status === "pending" && ack.revision.status === "published" && ack.revision.ackDueAt && (
+            <span className={`due-text ${isOverdue(ack.revision.ackDueAt) ? "late" : ""}`}> · {dueLabel(ack.revision.ackDueAt)}</span>
+          )}
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

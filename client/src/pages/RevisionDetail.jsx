@@ -9,10 +9,9 @@ import AcknowledgePanel from "../components/revisions/AcknowledgePanel.jsx";
 import ClarificationPanel from "../components/revisions/ClarificationPanel.jsx";
 import PublishPanel from "../components/revisions/PublishPanel.jsx";
 import RecipientStatusTable from "../components/revisions/RecipientStatusTable.jsx";
-import { RevisionStatus } from "../components/ui/Badge.jsx";
 import { Alert, Loading } from "../components/ui/Feedback.jsx";
-import RevChip from "../components/ui/RevChip.jsx";
-import { formatDate, formatDateTime } from "../utils/format.js";
+import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
+import TitleBlock from "../components/revisions/TitleBlock.jsx";
 
 function RevisionDetail() {
   const { revisionId } = useParams();
@@ -66,7 +65,7 @@ function RevisionDetail() {
   if (error) return <Alert kind="error" onRetry={load}>{error}</Alert>;
   if (!data) return <Loading label="Loading revision…" />;
 
-  const { revision, project, access, myAcknowledgment, acknowledgments, clarifications, activity, supersededBy, members } = data;
+  const { revision, project, access, myAcknowledgment, acknowledgments, clarifications, activity, supersededBy, members, history } = data;
   const drawing = revision.drawing;
   const isSuperseded = revision.status === "superseded";
 
@@ -80,15 +79,7 @@ function RevisionDetail() {
 
       <header className="page-header">
         <div>
-          <h1>{drawing.drawingNumber} · {drawing.title}</h1>
-          <div className="meta-row">
-            <RevChip revision={revision.revisionNumber} superseded={isSuperseded} />
-            <RevisionStatus status={revision.status} />
-            <span>Issued {formatDate(revision.issueDate)}</span>
-            {revision.publishedAt && (
-              <span>Published {formatDateTime(revision.publishedAt)} by {revision.publishedByName}</span>
-            )}
-          </div>
+          <h1 className="mono">{drawing.drawingNumber} Rev {revision.revisionNumber}</h1>
         </div>
         <div className="page-header-actions">
           <button type="button" className="btn btn-secondary" onClick={handleOpenDrawing} disabled={opening}>
@@ -96,6 +87,8 @@ function RevisionDetail() {
           </button>
         </div>
       </header>
+
+      <TitleBlock revision={revision} project={project} drawing={drawing} />
 
       {fileError && <Alert kind="error">{fileError}</Alert>}
 
@@ -125,7 +118,13 @@ function RevisionDetail() {
         </section>
 
         {revision.status === "draft" && access.isSupervisor && (
-          <PublishPanel revisionId={revision._id} members={members} currentUserId={user.id} onPublished={load} />
+          <PublishPanel
+            revision={revision}
+            members={members}
+            currentUserId={user.id}
+            supersedes={history.find((item) => item.status === "published")}
+            onPublished={load}
+          />
         )}
 
         {myAcknowledgment && (
@@ -152,9 +151,11 @@ function RevisionDetail() {
           />
         )}
 
+        <RevisionHistory history={history} currentId={revision._id} />
+
         <section className="card">
           <div className="card-header">
-            <h2>History of this revision</h2>
+            <h2>Activity on this revision</h2>
           </div>
           <ActivityTimeline items={activity} />
         </section>

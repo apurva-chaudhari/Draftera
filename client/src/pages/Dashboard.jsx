@@ -42,6 +42,20 @@ function Dashboard() {
             <div className="stat-detail">{stat.detail}</div>
           </div>
         ))}
+        {summary.overdueAcknowledgments > 0 && (
+          <div className="card stat-card attention">
+            <div className="stat-label">Your overdue acknowledgments</div>
+            <div className="stat-value">{summary.overdueAcknowledgments}</div>
+            <div className="stat-detail">Deadline has passed</div>
+          </div>
+        )}
+        {summary.overduePeople > 0 && (
+          <div className="card stat-card attention">
+            <div className="stat-label">Team members overdue</div>
+            <div className="stat-value">{summary.overduePeople}</div>
+            <div className="stat-detail">Past the acknowledgment deadline</div>
+          </div>
+        )}
         {summary.atRiskRecipients > 0 && (
           <div className="card stat-card attention">
             <div className="stat-label">People possibly on an old revision</div>
@@ -63,7 +77,7 @@ function Dashboard() {
             pendingItems.map((item) => (
               <Link className="list-item" to={`/revisions/${item.revision._id}`} key={item._id}>
                 <div>
-                  <span className="cell-title">{item.revision.drawing?.drawingNumber} · {item.revision.drawing?.title}</span>
+                  <span className="cell-title"><span className="mono">{item.revision.drawing?.drawingNumber}</span> · {item.revision.drawing?.title}</span>
                   <span className="cell-sub">{item.project?.code} · issued {timeAgo(item.revision.publishedAt)}</span>
                 </div>
                 <RevChip revision={item.revision.revisionNumber} />

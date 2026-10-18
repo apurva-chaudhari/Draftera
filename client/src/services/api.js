@@ -47,4 +47,41 @@ async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
-export { API_BASE_URL, apiRequest };
+/**
+ * Download a file (e.g. a CSV report) with the bearer token and hand it to
+ * the browser as a save-as. A plain link cannot be used because the API needs
+ * the Authorization header.
+ */
+async function apiDownload(endpoint, fallbackName) {
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new Error("Cannot reach the server. Check your connection and try again.");
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "The file could not be downloaded.");
+  }
+
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const filename = match ? match[1] : fallbackName;
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+export { API_BASE_URL, apiRequest, apiDownload };

@@ -35,6 +35,8 @@ async function getDashboardSummary(req, res, next) {
           pendingAcknowledgments: 0,
           openClarifications: 0,
           atRiskRecipients: 0,
+          overdueAcknowledgments: 0,
+          overduePeople: 0,
         },
         pendingItems: [],
         atRisk: [],
@@ -49,9 +51,17 @@ async function getDashboardSummary(req, res, next) {
       status: "published",
     }).distinct("_id");
 
+    // Published revisions whose acknowledgment deadline has passed.
+    const overdueRevisionIds = await DrawingRevision.find({
+      project: { $in: projectIds },
+      status: "published",
+      ackDueAt: { $lt: new Date() },
+    }).distinct("_id");
+
     const [
       activeProjects,
       pendingAcknowledgments,
+      overdueAcknowledgments,
       openClarifications,
       pendingItems,
       recentActivity,
@@ -61,6 +71,12 @@ async function getDashboardSummary(req, res, next) {
 
       Acknowledgment.countDocuments({
         revision: { $in: publishedRevisionIds },
+        recipient: userId,
+        status: "pending",
+      }),
+
+      Acknowledgment.countDocuments({
+        revision: { $in: overdueRevisionIds },
         recipient: userId,
         status: "pending",
       }),
@@ -121,6 +137,10 @@ async function getDashboardSummary(req, res, next) {
     });
 
     const currentDrawings = publishedRevisionIds.length;
+    const overduePeople = currencies.reduce(
+      (sum, currency) => sum + (currency ? currency.totals.overdue : 0),
+      0
+    );
 
     return res.status(200).json({
       success: true,
@@ -130,6 +150,8 @@ async function getDashboardSummary(req, res, next) {
         pendingAcknowledgments,
         openClarifications,
         atRiskRecipients: atRisk.length,
+        overdueAcknowledgments,
+        overduePeople,
       },
       pendingItems,
       atRisk: atRisk.slice(0, 6),

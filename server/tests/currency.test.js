@@ -116,3 +116,68 @@ test("latest published revision wins when picking the current one", () => {
   const result = run([older, revB], []);
   assert.equal(result.drawings[0].currentRevision.revisionNumber, "B");
 });
+
+// ---- acknowledgment deadlines -------------------------------------------
+
+const dueRev = { ...revB, ackDueAt: "2026-10-11T00:00:00Z" };
+
+test("a pending person is overdue once the deadline has passed", () => {
+  const result = buildCurrencyMatrix({
+    members,
+    drawings: [drawing],
+    revisions: [dueRev],
+    acknowledgments: [ack("rB", "eng"), ack("rB", "sub")],
+    now: new Date("2026-10-12T00:00:00Z"),
+  });
+  assert.equal(result.totals.overdue, 2);
+});
+
+test("nobody is overdue before the deadline", () => {
+  const result = buildCurrencyMatrix({
+    members,
+    drawings: [drawing],
+    revisions: [dueRev],
+    acknowledgments: [ack("rB", "eng"), ack("rB", "sub")],
+    now: new Date("2026-10-10T12:00:00Z"),
+  });
+  assert.equal(result.totals.overdue, 0);
+});
+
+test("someone who already acknowledged is never overdue", () => {
+  const result = buildCurrencyMatrix({
+    members,
+    drawings: [drawing],
+    revisions: [dueRev],
+    acknowledgments: [
+      ack("rB", "eng", { status: "acknowledged", viewedAt: "x", acknowledgedAt: "y" }),
+      ack("rB", "sub"),
+    ],
+    now: new Date("2026-10-12T00:00:00Z"),
+  });
+  assert.equal(result.totals.overdue, 1);
+});
+
+test("someone not issued the drawing cannot be late for it", () => {
+  const partial = { ...dueRev, recipients: ["eng"] };
+  const result = buildCurrencyMatrix({
+    members,
+    drawings: [drawing],
+    revisions: [partial],
+    acknowledgments: [ack("rB", "eng")],
+    now: new Date("2026-10-12T00:00:00Z"),
+  });
+  const sub = result.drawings[0].people.find((p) => p.user.name === "Subcontractor");
+  assert.equal(sub.state, "not_issued");
+  assert.equal(sub.overdue, false);
+});
+
+test("no deadline means never overdue", () => {
+  const result = buildCurrencyMatrix({
+    members,
+    drawings: [drawing],
+    revisions: [revB],
+    acknowledgments: [ack("rB", "eng"), ack("rB", "sub")],
+    now: new Date("2030-01-01T00:00:00Z"),
+  });
+  assert.equal(result.totals.overdue, 0);
+});

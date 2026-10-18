@@ -17,7 +17,7 @@ const listMyAcknowledgments = async (req, res, next) => {
     })
       .populate({
         path: "revision",
-        select: "revisionNumber issueDate changeSummary status publishedAt drawing project",
+        select: "revisionNumber issueDate changeSummary status publishedAt ackDueAt drawing project",
         populate: {
           path: "drawing",
           select: "drawingNumber title",
