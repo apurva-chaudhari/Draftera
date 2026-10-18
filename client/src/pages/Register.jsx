@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/authService.js";
+import BlueprintArt from "../components/ui/BlueprintArt.jsx";
+import Logo from "../components/ui/Logo.jsx";
 
 function Register() {
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ function Register() {
   return (
     <main className="auth-page">
       <section className="auth-brand-panel">
-        <div className="brand-mark">D</div>
+        <Logo size={48} />
         <p className="brand-name">Draftera</p>
         <p className="brand-description">
           Every team aligned with the right drawing revision.
@@ -69,6 +71,7 @@ function Register() {
           <span className="brand-note-dot" />
           Built for construction teams
         </div>
+        <BlueprintArt />
       </section>
 
       <section className="auth-form-panel">
