@@ -41,17 +41,11 @@ const authService = {
   },
 
   async getCurrentUser() {
-    const token = localStorage.getItem(TOKEN_KEY);
-
-    if (!token) {
+    if (!localStorage.getItem(TOKEN_KEY)) {
       throw new Error("You are not logged in.");
     }
 
-    return apiRequest("/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    return apiRequest("/auth/me");
   },
 
   logout() {

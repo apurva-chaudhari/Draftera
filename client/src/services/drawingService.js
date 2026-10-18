@@ -1,31 +1,38 @@
-
-import { API_BASE_URL } from "./api.js";
+import { apiRequest } from "./api.js";
 
 const drawingService = {
-  async uploadRevision(formData) {
-    const token = localStorage.getItem("draftera_token");
+  uploadRevision(formData) {
+    return apiRequest("/drawings/upload", { method: "POST", body: formData });
+  },
 
-    if (!token) {
-      throw new Error("Please log in to upload a drawing.");
-    }
+  listProjectRevisions(projectId) {
+    return apiRequest(`/drawings/project/${projectId}`);
+  },
 
-    const response = await fetch(`${API_BASE_URL}/drawings/upload`, {
+  getRevision(revisionId) {
+    return apiRequest(`/drawings/revision/${revisionId}`);
+  },
+
+  publishRevision(revisionId, recipients) {
+    return apiRequest(`/drawings/${revisionId}/publish`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
+      body: JSON.stringify({ recipients }),
     });
+  },
 
-    const data = await response.json().catch(() => ({}));
+  /** Issue an already-published revision to people who were left off. */
+  addRecipients(revisionId, recipients) {
+    return apiRequest(`/drawings/revision/${revisionId}/recipients`, {
+      method: "POST",
+      body: JSON.stringify({ recipients }),
+    });
+  },
 
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Unable to upload the drawing revision."
-      );
-    }
-
-    return data;
+  /** Returns a short-lived signed URL and records that the user opened it. */
+  openRevisionFile(revisionId) {
+    return apiRequest(`/drawings/revision/${revisionId}/open`, {
+      method: "POST",
+    });
   },
 };
 

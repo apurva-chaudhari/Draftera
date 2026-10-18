@@ -1,0 +1,38 @@
+/* Design tokens: one place to change the look of the whole product. */
+:root {
+  --font-sans: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --color-bg: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f9fafc;
+  --color-border: #e3e8ef;
+  --color-border-strong: #cfd7e3;
+
+  --color-text: #15243a;
+  --color-text-muted: #65758b;
+  --color-text-faint: #8a97a8;
+
+  --color-primary: #244d88;
+  --color-primary-hover: #1c3f72;
+  --color-primary-soft: #eaf1fb;
+
+  --color-success: #17794f;
+  --color-success-soft: #e6f5ee;
+  --color-warning: #9a5b00;
+  --color-warning-soft: #fff4de;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-info: #1d5fb4;
+  --color-info-soft: #e8f1fd;
+  --color-neutral: #526072;
+  --color-neutral-soft: #eef1f5;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(21, 36, 58, 0.05);
+  --shadow-md: 0 4px 14px rgba(21, 36, 58, 0.08);
+
+  --sidebar-width: 244px;
+}
