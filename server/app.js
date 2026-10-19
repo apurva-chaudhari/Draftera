@@ -25,6 +25,10 @@ app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 
 // Allow only the configured frontend origins (comma-separated CLIENT_URL).
+// With cookie sessions this check is also the CSRF defence: browsers send an
+// Origin header on every cross-site POST/PUT/DELETE, and a request from any
+// origin not listed here is refused before it reaches a route. Requests with
+// no Origin header (curl, health checks) carry no browser cookie to abuse.
 const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
   .split(",")
   .map((origin) => origin.trim().replace(/\/$/, ""))
@@ -39,6 +43,8 @@ app.use(
       }
       return callback(new Error("Origin not allowed by CORS."));
     },
+    // The session cookie is sent with cross-origin API calls.
+    credentials: true,
     // Lets the browser read the file name of CSV downloads.
     exposedHeaders: ["Content-Disposition"],
   })

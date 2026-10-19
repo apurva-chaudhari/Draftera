@@ -57,11 +57,13 @@ Hiding old revisions would break traceability and prevent audits, so they stay
 readable with a clear "Do not build from this" banner. Acknowledging a
 superseded revision is refused.
 
-### D8. Reminders are recorded, not emailed
-A reminder writes to the activity log and is rate limited to one per person
-per revision per hour. *Alternative:* email/WhatsApp. *Deferred* because it
-needs a provider, verified sender and consent handling, which does not fit the
-time box. It is the first item in "Future work".
+### D8. Reminders are recorded and emailed
+A reminder writes to the activity log, is rate limited to one per person per
+revision per hour, and is emailed when email is configured. The supervisor is
+told honestly whether an email went out. Email uses Brevo's HTTPS API (Render's
+free plan blocks SMTP) and is best-effort: a mail failure never fails the
+action. *Alternative:* WhatsApp. *Not done*: it needs the WhatsApp Business API,
+an approved sender and message templates. See `notifications.md`.
 
 ### D9. Optional deadlines and an "overdue" state
 A supervisor can require acknowledgment within 24 h, 48 h, 3 or 7 days. Overdue
@@ -95,7 +97,7 @@ what it supersedes and who is being left out.
 | Express + MongoDB (Mongoose) | Flexible documents for revisions and logs, Atlas free tier | PostgreSQL: stronger relational integrity, slower to set up in the time box |
 | MongoDB transactions for publish | Publishing, superseding and creating acknowledgments must succeed together | Sequential writes: could leave a half-published revision |
 | Supabase Storage | Private buckets and signed URLs with little setup | S3: more configuration; Firebase Storage: fine, but Supabase was already integrated |
-| JWT in `localStorage` | Simple SPA flow | httpOnly cookies are safer against XSS; listed as a known risk |
+| Session in an `HttpOnly` cookie | Page scripts (and any injected script) cannot read it; CORS allow-list doubles as CSRF defence | `localStorage` token: simpler, but readable by XSS. Trade-off: stateless, so sign-out cannot revoke a copied token before it expires (8 h) |
 | Vercel (client) + Render (API) | Free tiers, Git-based deploys | Firebase Hosting works for the client as well |
 
 ## 4. Stakeholder perspectives considered
@@ -109,19 +111,20 @@ what it supersedes and who is being left out.
 
 - Six-day assessment: no formal user interviews or site observation were possible. Causes in `problem-analysis.md` are hypotheses grounded in the sources in `evidence-register.md`, not measured findings.
 - No offline mode. Poor connectivity on real sites is a genuine risk (see Future work).
-- No email/SMS delivery, so "Not opened" means "no evidence of opening in Draftera", not "not received by any channel".
+- Email only (no WhatsApp/SMS), so "Not opened" means "no evidence of opening in Draftera", not "not received by any channel".
 - PDF only, 10 MB limit; no markup, comparison or CAD formats.
-- Removing a team member is not implemented.
+- Removing a team member keeps their past acknowledgments, questions and audit entries on purpose: they are the record of who was told what.
+- Backups are manual; see `backup-restore.md`.
 - Acknowledgment is not a legal sign-off and Draftera does not replace a formal document-control procedure.
 - Automated tests cover the revision-currency logic, report, deadlines and access rules. An end-to-end workflow suite exists (`server/tests/workflow.integration.test.js`) and runs against a real test database in CI; it has not been run in every environment, so run it locally before relying on it.
 - Component rendering was checked with a render harness, not a real browser. Test each page on a phone, tablet and laptop (see `docs/testing.md`).
 
 ## 6. Future work, in priority order
 
-1. Email / WhatsApp notifications on publish and on overdue acknowledgments.
+1. WhatsApp notifications (email is done).
 2. Offline-friendly PWA so site staff can read the latest drawing without signal.
 3. Visual comparison between revisions (highlight what changed).
 4. Acknowledgment deadlines and escalation.
-5. httpOnly cookie sessions and refresh tokens.
+5. Server-side session list for instant sign-out of every device.
 6. Visual comparison of two PDF revisions.
-7. Remove or change a member's role on a project.
+7. Change a member's role on a project (removal is done).

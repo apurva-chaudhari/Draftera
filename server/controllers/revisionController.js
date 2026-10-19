@@ -10,6 +10,7 @@ const ActivityLog = require("../models/ActivityLog");
 const supabase = require("../config/storage");
 const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
+const notifications = require("../services/notifications");
 
 const STORAGE_BUCKET = "drawing-revisions";
 
@@ -60,6 +61,7 @@ const publishRevision = async (req, res, next) => {
     let publishedRevision;
     let drawingNumber;
     let supersededNumbers = [];
+    let projectInfo;
 
     // Publishing, superseding the old revision and creating one pending
     // acknowledgment per recipient must succeed or fail together.
@@ -71,6 +73,8 @@ const publishRevision = async (req, res, next) => {
       const project = await Project.findById(revision.project).session(session);
 
       if (!project) throw httpError(404, "Project not found.");
+
+      projectInfo = { _id: project._id, name: project.name, code: project.code };
 
       if (String(project.supervisor) !== String(req.user._id)) {
         throw httpError(403, "Only the project supervisor can publish revisions.");
@@ -162,6 +166,16 @@ const publishRevision = async (req, res, next) => {
       );
 
       publishedRevision = revision.toObject();
+    });
+
+    // After the transaction has committed; failures here never affect it.
+    notifications.notifyRevisionPublished({
+      project: projectInfo,
+      revision: publishedRevision,
+      drawingNumber,
+      recipientIds: recipients,
+      actor: req.user,
+      supersededNumbers,
     });
 
     return res.status(200).json({
@@ -547,6 +561,14 @@ const addRecipients = async (req, res, next) => {
       actor: req.user._id,
       action: "revision_published",
       message: `${req.user.name} issued ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber} to ${users.map((u) => u.name).join(", ")}.`,
+    });
+
+    notifications.notifyRevisionPublished({
+      project,
+      revision,
+      drawingNumber: revision.drawing?.drawingNumber,
+      recipientIds: fresh,
+      actor: req.user,
     });
 
     return res.status(200).json({

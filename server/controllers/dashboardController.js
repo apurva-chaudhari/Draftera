@@ -87,7 +87,7 @@ async function getDashboardSummary(req, res, next) {
         status: "open",
         $or: [
           { project: { $in: supervisedIds } },
-          { requestedBy: userId },
+          { requestedBy: userId, project: { $in: projectIds } },
         ],
       }),
 

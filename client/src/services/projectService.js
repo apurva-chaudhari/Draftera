@@ -23,6 +23,12 @@ const projectService = {
     });
   },
 
+  removeMember(projectId, userId) {
+    return apiRequest(`/projects/${projectId}/members/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
   getCurrency(projectId) {
     return apiRequest(`/projects/${projectId}/currency`);
   },

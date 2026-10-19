@@ -1,18 +1,15 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-const TOKEN_KEY = "draftera_token";
-const USER_KEY = "draftera_user";
-
 /**
  * Thin wrapper around fetch for the Draftera API.
- *  - adds the bearer token
+ *  - the session lives in an httpOnly cookie that the browser sends by itself
+ *    (credentials: "include"); page scripts never see or store the token
  *  - sends JSON unless the body is FormData (file uploads)
  *  - turns API errors into Error objects with the server's message
- *  - signs the user out if the server says the token is no longer valid
+ *  - sends the user to the login page if the session has expired
  */
 async function apiRequest(endpoint, options = {}) {
-  const token = localStorage.getItem(TOKEN_KEY);
   const isJsonBody = typeof options.body === "string";
 
   let response;
@@ -20,9 +17,9 @@ async function apiRequest(endpoint, options = {}) {
   try {
     response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      credentials: "include",
       headers: {
         ...(isJsonBody ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });
@@ -34,9 +31,9 @@ async function apiRequest(endpoint, options = {}) {
 
   const data = await response.json().catch(() => ({}));
 
-  if (response.status === 401 && token) {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  // An expired session on a normal page sends the user back to sign in.
+  // The /auth calls handle their own 401s (wrong password, not signed in).
+  if (response.status === 401 && !endpoint.startsWith("/auth/")) {
     window.location.assign("/login");
   }
 
@@ -48,18 +45,15 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 /**
- * Download a file (e.g. a CSV report) with the bearer token and hand it to
- * the browser as a save-as. A plain link cannot be used because the API needs
- * the Authorization header.
+ * Download a file (e.g. a CSV report) with the session cookie and hand it to
+ * the browser as a save-as.
  */
 async function apiDownload(endpoint, fallbackName) {
-  const token = localStorage.getItem(TOKEN_KEY);
-
   let response;
 
   try {
     response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
     });
   } catch {
     throw new Error("Cannot reach the server. Check your connection and try again.");

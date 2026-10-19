@@ -64,7 +64,8 @@ let base;
 async function call(method, path, { token, json, form } = {}) {
   const headers = {};
   let body;
-  if (token) headers.Authorization = `Bearer ${token}`;
+  // Sessions travel in an httpOnly cookie; `token` is that cookie's value.
+  if (token) headers.Cookie = `draftera_session=${token}`;
   if (json !== undefined) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(json);
@@ -92,7 +93,14 @@ async function register(key, name, role) {
     json: { name, email: `${key}@test.com`, password: "Test@12345", role },
   });
   assert.equal(res.status, 201, `register ${key}: ${JSON.stringify(res.data)}`);
-  people[key] = { id: res.data.user.id, token: res.data.token, name };
+  assert.equal(res.data.token, undefined, "the token must never appear in the response body");
+
+  const setCookie = res.headers.get("set-cookie") || "";
+  assert.match(setCookie, /HttpOnly/i, "session cookie is httpOnly");
+  const token = /draftera_session=([^;]+)/.exec(setCookie)?.[1];
+  assert.ok(token, "register sets a session cookie");
+
+  people[key] = { id: res.data.user.id, token, name };
 }
 
 test.before(async () => {
@@ -131,6 +139,27 @@ test("workflow", { skip }, async (t) => {
       json: { email: "amit@test.com", password: "wrong-password" },
     });
     assert.equal(bad.status, 401);
+  });
+
+  await t.test("sessions: login sets a cookie, /me reads it, logout clears it", async () => {
+    const login = await call("POST", "/api/auth/login", {
+      json: { email: "amit@test.com", password: "Test@12345" },
+    });
+    assert.equal(login.status, 200);
+    assert.equal(login.data.token, undefined);
+    const cookie = login.headers.get("set-cookie");
+    assert.match(cookie, /HttpOnly/i);
+    assert.match(cookie, /SameSite=Lax/i);
+
+    const me = await call("GET", "/api/auth/me", { token: people.amit.token });
+    assert.equal(me.data.user.email, "amit@test.com");
+
+    const noCookie = await call("GET", "/api/auth/me");
+    assert.equal(noCookie.status, 401);
+
+    const logout = await call("POST", "/api/auth/logout", { token: people.amit.token });
+    assert.equal(logout.status, 200);
+    assert.match(logout.headers.get("set-cookie"), /draftera_session=;/);
   });
 
   await t.test("subcontractors cannot create projects; engineers can", async () => {
@@ -384,6 +413,54 @@ test("workflow", { skip }, async (t) => {
     ]) {
       assert.ok(actions.has(action), `missing audit action ${action}`);
     }
+  });
+
+  await t.test("removing a team member", async () => {
+    const remove = (token, userId) =>
+      call("DELETE", `/api/projects/${ctx.projectId}/members/${userId}`, { token });
+
+    assert.equal((await remove(people.sneha.token, people.rohan.id)).status, 403, "engineers cannot remove");
+    assert.equal((await remove(people.amit.token, people.amit.id)).status, 400, "supervisor cannot be removed");
+    assert.equal((await remove(people.amit.token, people.vikram.id)).status, 404, "not on the team");
+
+    const done = await remove(people.amit.token, people.rohan.id);
+    assert.equal(done.status, 200, JSON.stringify(done.data));
+    assert.equal((await remove(people.amit.token, people.rohan.id)).status, 404, "already removed");
+
+    // Access is gone straight away.
+    assert.equal((await call("GET", `/api/projects/${ctx.projectId}`, { token: people.rohan.token })).status, 403);
+    assert.equal((await call("GET", "/api/projects", { token: people.rohan.token })).data.count, 0);
+    assert.equal((await call("POST", `/api/drawings/revision/${ctx.revB}/open`, { token: people.rohan.token })).status, 403);
+    assert.equal((await call("POST", `/api/acknowledgments/${ctx.revB}/acknowledge`, { token: people.rohan.token })).status, 403);
+    assert.equal((await call("GET", "/api/acknowledgments/mine", { token: people.rohan.token })).data.count, 0);
+    assert.equal((await call("GET", "/api/clarifications/mine", { token: people.rohan.token })).data.count, 0);
+    assert.equal((await call("GET", "/api/dashboard/summary", { token: people.rohan.token })).data.summary.pendingAcknowledgments, 0);
+
+    // He disappears from the live monitoring view...
+    const currency = await call("GET", `/api/projects/${ctx.projectId}/currency`, { token: people.amit.token });
+    assert.ok(!currency.data.drawings[0].people.some((p) => p.user.name === "Rohan Gaikwad"));
+
+    // ...but his history is kept, and the removal is audited.
+    assert.ok((await mongoose.models.Acknowledgment.countDocuments({ recipient: people.rohan.id })) > 0, "history kept");
+    const detail = await call("GET", `/api/drawings/revision/${ctx.revB}`, { token: people.amit.token });
+    const former = detail.data.acknowledgments.find((a) => a.recipient?.name === "Rohan Gaikwad");
+    assert.ok(former, "supervisor still sees his past acknowledgment");
+    assert.equal(former.recipientRole, null);
+
+    const activity = await call("GET", `/api/projects/${ctx.projectId}/activity`, { token: people.amit.token });
+    assert.ok(activity.data.activity.some((a) => a.action === "member_removed" && /Rohan/.test(a.message)));
+
+    // Reminders to a former member are refused.
+    const remind = await call("POST", `/api/acknowledgments/${ctx.revB}/remind/${people.rohan.id}`, { token: people.amit.token });
+    assert.equal(remind.status, 409);
+
+    // He can be added back.
+    const back = await call("POST", `/api/projects/${ctx.projectId}/members`, {
+      token: people.amit.token,
+      json: { email: "rohan@test.com", role: "subcontractor" },
+    });
+    assert.equal(back.status, 201);
+    assert.equal((await call("GET", `/api/projects/${ctx.projectId}`, { token: people.rohan.token })).status, 200);
   });
 
   await t.test("deactivated users are locked out immediately", async () => {

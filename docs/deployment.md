@@ -12,7 +12,7 @@ Architecture: **Vercel** (React client) → **Render** (Express API) → **Mongo
 
 ## 3. API on Render
 1. New → Web Service → connect the GitHub repo. `render.yaml` in the repo root preconfigures it (root dir `server`, build `npm install`, start `npm start`).
-2. Set environment variables: `MONGODB_URI`, `JWT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CLIENT_URL` (your Vercel URL, no trailing slash), `NODE_ENV=production`.
+2. Set environment variables: `MONGODB_URI`, `JWT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CLIENT_URL` (your Vercel URL, no trailing slash), `NODE_ENV=production`. Optional: `BREVO_API_KEY` + `MAIL_FROM` for email (see `docs/notifications.md`), `APP_URL`, `COOKIE_SAMESITE`.
 3. Check `https://<api>.onrender.com/api/health` returns `database: "connected"`.
    Free instances sleep: the first request after idle can take ~30 s.
 
@@ -22,7 +22,10 @@ Architecture: **Vercel** (React client) → **Render** (Express API) → **Mongo
 3. Deploy. `client/vercel.json` rewrites all routes to `index.html` so deep links work.
 4. Add the Vercel URL to `CLIENT_URL` on Render and redeploy the API.
 
-## 5. Demo data (optional)
+## 5. Sign-in cookie
+The session is an `HttpOnly` cookie. With the API on Render and the app on Vercel it is sent cross-site, which works because production uses `SameSite=None; Secure` and the API allows credentials for the origins in `CLIENT_URL`. If sign-in succeeds but you are sent straight back to the login page, check that `CLIENT_URL` exactly matches the Vercel address (https, no trailing slash) and that the browser allows third-party cookies for the site.
+
+## 5b. Demo data (optional)
 Run locally with production credentials in `server/.env`: `npm run seed`.
 
 ## 6. Post-deploy checklist

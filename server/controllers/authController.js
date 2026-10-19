@@ -5,6 +5,7 @@ const {
   comparePassword,
   generateToken,
 } = require("../utils/auth");
+const { setSessionCookie, clearSessionCookie } = require("../utils/session");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,12 +84,11 @@ async function register(req, res, next) {
       role: accountRole,
     });
 
-    const token = generateToken(user);
+    setSessionCookie(res, generateToken(user));
 
     return res.status(201).json({
       success: true,
       message: "Account created successfully.",
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -162,12 +162,11 @@ async function login(req, res, next) {
       });
     }
 
-    const token = generateToken(user);
+    setSessionCookie(res, generateToken(user));
 
     return res.status(200).json({
       success: true,
       message: "Login successful.",
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -180,4 +179,10 @@ async function login(req, res, next) {
   }
 }
 
-module.exports = { register, login };
+/** End the session by clearing the cookie. Safe to call when signed out. */
+function logout(req, res) {
+  clearSessionCookie(res);
+  return res.status(200).json({ success: true, message: "Signed out." });
+}
+
+module.exports = { register, login, logout };

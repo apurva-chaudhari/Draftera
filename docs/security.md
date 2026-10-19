@@ -20,14 +20,19 @@ A `.env` file contains the database password, JWT secret and Supabase service-ro
 | Reading other projects | Membership check on every project, revision, clarification and file endpoint |
 | File leaks | Private bucket, 120-second signed URLs, drafts hidden from the team |
 | Malicious uploads | PDF magic-byte check, 10 MB limit, sanitised file names |
-| Cross-site requests | CORS allow-list from `CLIENT_URL` |
+| Session theft by injected script | The session token lives in an `HttpOnly` cookie (`Secure`, `SameSite=None` in production), 8-hour lifetime, cleared on sign-out. Nothing is kept in `localStorage` |
+| Cross-site requests (CSRF) | CORS allow-list from `CLIENT_URL`: browsers send an `Origin` header on cross-site writes and unknown origins are refused |
+| Former team members | Removal takes effect at once: every permission check reads the project's member list; their history is kept |
+| Data loss | Verified, optionally encrypted backups with a tested restore (`docs/backup-restore.md`) |
 | Spreadsheet formula injection | CSV cells beginning with `= + - @` are neutralised |
 | Deactivated users | Account status checked on every request |
 | Lost audit data | Publish writes its audit entry inside the same transaction |
 
 ## Known gaps (documented, not hidden)
 
-- The JWT is stored in `localStorage`, so a cross-site-scripting bug could read it. A production system should use `HttpOnly` cookies with CSRF protection.
+- Sessions are stateless: signing out clears the cookie, but a copied token stays valid until it expires (8 hours) unless the account is deactivated. A server-side session list would allow instant revocation.
+- Because the cookie is cross-site (Render + Vercel), some browsers that block third-party cookies (e.g. Safari) may refuse it. Serving the API from a subdomain of the web app's domain, with `COOKIE_SAMESITE=lax`, avoids this.
 - The rate limiter is in memory and per instance; use a shared store (e.g. Redis) when scaling out.
 - No email verification or password reset yet.
-- No automated backup/restore test; rely on Atlas backups and verify a restore before real use.
+- Backups are run by hand (or by a scheduler you set up); they are not automatic. Run `npm run backup:verify` after each one and rehearse a restore into a scratch database before relying on it.
+- Email goes out as plain notifications only; there is no WhatsApp channel and no per-user opt-out yet.

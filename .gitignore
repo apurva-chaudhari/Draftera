@@ -33,3 +33,7 @@ test-results/
 # Temporary files
 *.tmp
 *.temp
+
+# Database backups (contain personal data)
+backups/
+*.dbk

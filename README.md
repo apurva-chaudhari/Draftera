@@ -105,8 +105,8 @@ The end-to-end workflow suite needs a throwaway MongoDB replica set; CI provides
 
 ## Documentation
 
-[Problem analysis](docs/problem-analysis.md) · [Evidence register](docs/evidence-register.md) · [Requirements](docs/requirements.md) · [Architecture](docs/system-architecture.md) · [**Design decisions and trade-offs**](docs/design-decisions.md) · [Testing](docs/testing.md) · [Security](docs/security.md) · [Demo script](docs/demo-script.md) · [Deployment](docs/deployment.md) · [Defense notes](docs/defense-notes.md)
+[Problem analysis](docs/problem-analysis.md) · [Evidence register](docs/evidence-register.md) · [Requirements](docs/requirements.md) · [Architecture](docs/system-architecture.md) · [**Design decisions and trade-offs**](docs/design-decisions.md) · [Testing](docs/testing.md) · [Security](docs/security.md) · [Demo script](docs/demo-script.md) · [Deployment](docs/deployment.md) · [Notifications](docs/notifications.md) · [Backup and restore](docs/backup-restore.md) · [Defense notes](docs/defense-notes.md)
 
 ## Known limitations
 
-No offline mode, no email/SMS delivery, no member removal, JWT stored in `localStorage`. See [design decisions](docs/design-decisions.md#5-constraints-and-honest-limitations).
+No offline mode, no WhatsApp/SMS (email only), manual backups, stateless 8-hour cookie sessions. See [design decisions](docs/design-decisions.md#5-constraints-and-honest-limitations).

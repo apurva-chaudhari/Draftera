@@ -31,7 +31,7 @@ Use a separate throwaway database, never the one holding your real data. CI runs
 
 | # | Area | Case | Expected |
 | --- | --- | --- | --- |
-| A1 | Auth | Request without token to every protected route | 401 |
+| A1 | Auth | Request without a session cookie to every protected route | 401 |
 | A2 | Auth | Forged token | 401 |
 | A3 | Auth | Register as `admin` | 403 |
 | A4 | Auth | Duplicate email | 409 |
@@ -82,6 +82,16 @@ Use a separate throwaway database, never the one holding your real data. CI runs
 | X2 | Report | Supervisor CSV: headers, BOM, quoting | valid |
 | X3 | Report | Names starting with `=` `+` `-` `@` | neutralised |
 | L1 | Audit | Every action type appears in the project trail | all present |
+| S1 | Session | Cookie is `HttpOnly`; `Secure` + `SameSite=None` in production; cleared on sign-out | yes |
+| S2 | Session | `Authorization: Bearer` header is ignored; expired, forged or deactivated-user cookie | 401 |
+| R1 | Members | Supervisor removes a member; they lose access at once; history is kept | 200, then 403 |
+| R2 | Members | Non-supervisor removes / supervisor removed / not on team / bad id | 403 / 400 / 404 / 400 |
+| R3 | Members | Removed person acknowledges, is reminded, or is issued the revision | 403 / refused / 409 |
+| N1 | Email | Publish emails recipients but never the publisher; provider failure never breaks the action | yes |
+| N2 | Email | Reminder reports honestly whether an email went out; demo addresses skipped | yes |
+| B1 | Backup | Backup verifies and restores exactly; encrypted file holds no readable data | identical |
+| B2 | Backup | Wrong passphrase, tampering, truncation, damaged PDF, invalid file | refused, nothing written |
+| B3 | Backup | Restore into non-empty database refused; `--replace` swaps; large collections in batches | yes |
 
 ## Manual test checklist (phone, tablet, laptop)
 

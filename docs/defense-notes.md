@@ -18,4 +18,4 @@ That is the biggest adoption risk. Mitigations: mobile-first layout, small PDFs,
 Hashed passwords (bcrypt), JWT with issuer/audience, project-membership checks on every endpoint, no public sign-up for privileged roles, private storage with 120 s signed URLs, PDF signature + size validation, Helmet, CORS allow-list, login rate limiting.
 
 **What is weak?**
-Token in `localStorage`, in-memory rate limiter (single instance), no integration tests, no member removal, reminders are not delivered outside the app.
+In-memory rate limiter (single instance), stateless sessions (a copied cookie stays valid until it expires), manual backups, email only (no WhatsApp), no email verification or password reset.
