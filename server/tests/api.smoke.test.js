@@ -46,11 +46,52 @@ for (const path of [
   });
 }
 
-test("a forged token is rejected", async () => {
+test("a forged session cookie is rejected", async () => {
+  const res = await fetch(`${base}/api/projects`, {
+    headers: { Cookie: "draftera_session=not.a.real.token" },
+  });
+  assert.equal(res.status, 401);
+});
+
+test("a bearer token is no longer accepted: sessions are cookie-only", async () => {
   const res = await fetch(`${base}/api/projects`, {
     headers: { Authorization: "Bearer not.a.real.token" },
   });
   assert.equal(res.status, 401);
+  assert.equal((await res.json()).message, "Authentication required.");
+});
+
+test("logout clears the session cookie", async () => {
+  const res = await fetch(`${base}/api/auth/logout`, { method: "POST" });
+  assert.equal(res.status, 200);
+  const cookie = res.headers.get("set-cookie") || "";
+  assert.match(cookie, /draftera_session=;/);
+  assert.match(cookie, /HttpOnly/i);
+});
+
+test("cross-site writes are blocked (CSRF defence)", async () => {
+  const res = await fetch(`${base}/api/auth/logout`, {
+    method: "POST",
+    headers: { Origin: "https://evil.example" },
+  });
+  assert.equal(res.status, 403);
+});
+
+test("CORS allows credentials for the real front end only", async () => {
+  const res = await fetch(`${base}/api/health`, {
+    headers: { Origin: "http://localhost:5173" },
+  });
+  assert.equal(res.headers.get("access-control-allow-credentials"), "true");
+  assert.equal(res.headers.get("access-control-allow-origin"), "http://localhost:5173");
+});
+
+test("every data model is included in backups", () => {
+  const mongoose = require("mongoose");
+  const { collectionNames } = require("../utils/backupRuntime");
+  const covered = new Set(collectionNames());
+  for (const model of Object.values(mongoose.models)) {
+    assert.ok(covered.has(model.collection.name), `${model.modelName} is missing from the backup list`);
+  }
 });
 
 test("registration refuses privileged roles", async () => {

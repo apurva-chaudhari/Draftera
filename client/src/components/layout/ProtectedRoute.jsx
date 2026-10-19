@@ -4,7 +4,7 @@ import authService from "../../services/authService.js";
 import { AuthContext } from "../../context/AuthContext.jsx";
 
 /**
- * Verifies the stored token with the server before showing any protected
+ * Asks the server whether the session cookie is valid before showing any protected
  * page, then shares the verified user with the page tree.
  */
 function ProtectedRoute({ children }) {
@@ -14,11 +14,6 @@ function ProtectedRoute({ children }) {
     let isActive = true;
 
     async function verifySession() {
-      if (!authService.getToken()) {
-        if (isActive) setState({ status: "anonymous", user: null });
-        return;
-      }
-
       try {
         const response = await authService.getCurrentUser();
 
@@ -30,7 +25,6 @@ function ProtectedRoute({ children }) {
           );
         }
       } catch {
-        authService.logout();
         if (isActive) setState({ status: "anonymous", user: null });
       }
     }

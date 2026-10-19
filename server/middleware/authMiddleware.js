@@ -1,19 +1,12 @@
 
 const User = require("../models/User");
 const { verifyToken } = require("../utils/auth");
+const { readCookie, SESSION_COOKIE } = require("../utils/session");
 
 async function requireAuth(req, res, next) {
   try {
-    const authorization = req.headers.authorization;
-
-    if (!authorization || !authorization.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required.",
-      });
-    }
-
-    const token = authorization.slice(7).trim();
+    // The session token only travels in the httpOnly cookie.
+    const token = readCookie(req, SESSION_COOKIE);
 
     if (!token) {
       return res.status(401).json({

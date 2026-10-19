@@ -5,15 +5,21 @@ const DrawingRevision = require("../models/DrawingRevision");
 const Project = require("../models/Project");
 const User = require("../models/User");
 const { logActivity } = require("../utils/activity");
-const { getProjectAccess } = require("../utils/projectAccess");
+const { getProjectAccess, findAccessibleProjectIds } = require("../utils/projectAccess");
+const notifications = require("../services/notifications");
 
 // A supervisor may nudge the same person about the same revision once per hour.
 const REMINDER_COOLDOWN_MS = 60 * 60 * 1000;
 
 const listMyAcknowledgments = async (req, res, next) => {
   try {
+    // Someone removed from a project no longer sees its tasks. Their old
+    // records stay in the database as history.
+    const projectIds = await findAccessibleProjectIds(req.user._id);
+
     const acknowledgments = await Acknowledgment.find({
       recipient: req.user._id,
+      project: { $in: projectIds },
     })
       .populate({
         path: "revision",
@@ -56,6 +62,18 @@ const acknowledgeRevision = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: "Published revision not found.",
+      });
+    }
+
+    const acknowledgmentProject = await Project.findById(revision.project);
+
+    if (
+      !acknowledgmentProject ||
+      !getProjectAccess(acknowledgmentProject, req.user._id).isMember
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have access to this project.",
       });
     }
 
@@ -164,6 +182,13 @@ const sendReminder = async (req, res, next) => {
       });
     }
 
+    if (!getProjectAccess(project, userId).isMember) {
+      return res.status(409).json({
+        success: false,
+        message: "That person is no longer on the project team.",
+      });
+    }
+
     if (acknowledgment.status === "acknowledged") {
       return res.status(409).json({
         success: false,
@@ -185,7 +210,7 @@ const sendReminder = async (req, res, next) => {
     acknowledgment.reminderCount += 1;
     await acknowledgment.save();
 
-    const recipient = await User.findById(userId).select("name");
+    const recipient = await User.findById(userId).select("name email");
 
     await logActivity({
       project: revision.project,
@@ -195,9 +220,27 @@ const sendReminder = async (req, res, next) => {
       message: `${req.user.name} sent a reminder to ${recipient?.name} for ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
     });
 
+    // Awaited (it has a short timeout) so the supervisor is told the truth:
+    // emailed, or only recorded because email is not set up.
+    const delivery = recipient
+      ? await notifications.notifyReminder({
+          project,
+          revision,
+          drawingNumber: revision.drawing?.drawingNumber,
+          user: recipient,
+          actor: req.user,
+          overdue: Boolean(revision.ackDueAt && revision.ackDueAt < new Date()),
+        })
+      : { sent: false };
+
     return res.status(200).json({
       success: true,
-      message: `Reminder recorded for ${recipient?.name}.`,
+      emailed: delivery.sent,
+      message: delivery.sent
+        ? `Reminder emailed to ${recipient.name}.`
+        : `Reminder recorded for ${recipient?.name}. No email was sent${
+            delivery.reason === "not_configured" ? " because email is not set up" : ""
+          }.`,
     });
   } catch (error) {
     return next(error);

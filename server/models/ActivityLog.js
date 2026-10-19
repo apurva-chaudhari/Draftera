@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const ACTIVITY_ACTIONS = [
   "project_created",
   "member_added",
+  "member_removed",
   "revision_uploaded",
   "revision_published",
   "revision_opened",

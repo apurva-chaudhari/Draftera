@@ -8,6 +8,7 @@ const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
 const { loadProjectCurrency } = require("../services/currencyService");
 const { buildDistributionCsv } = require("../utils/report");
+const notifications = require("../services/notifications");
 
 // Roles a supervisor may grant when adding someone to a project team.
 const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
@@ -274,9 +275,97 @@ const addProjectMember = async (req, res, next) => {
       message: `${req.user.name} added ${user.name} as ${role.replace("_", " ")}.`,
     });
 
+    notifications.notifyAddedToProject({ project, user, role, actor: req.user });
+
     return res.status(201).json({
       success: true,
       message: `${user.name} added to the project.`,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Remove someone from a project team (supervisor only).
+ *
+ * The person loses access immediately because every permission check reads
+ * the project's member list. Their past acknowledgments, questions and audit
+ * entries are deliberately kept: they are the project's record of who was
+ * told what, and deleting them would rewrite history.
+ */
+const removeProjectMember = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    const { project, access } = loaded;
+
+    if (!access.isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can remove team members.",
+      });
+    }
+
+    const { userId } = req.params;
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID." });
+    }
+
+    // Removing the supervisor would leave the project with nobody able to
+    // manage it, so it is not allowed.
+    if (String(project.supervisor) === String(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "The project supervisor cannot be removed.",
+      });
+    }
+
+    const member = project.members.find((m) => String(m.user) === String(userId));
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: "That person is not on the project team.",
+      });
+    }
+
+    // Atomic: only succeeds if they are still a member and not the supervisor.
+    const result = await Project.updateOne(
+      {
+        _id: project._id,
+        supervisor: { $ne: userId },
+        "members.user": userId,
+      },
+      { $pull: { members: { user: userId } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "That person is not on the project team.",
+      });
+    }
+
+    const user = await User.findById(userId).select("name email");
+    const name = user?.name || "A team member";
+
+    await logActivity({
+      project: project._id,
+      actor: req.user._id,
+      action: "member_removed",
+      message: `${req.user.name} removed ${name} (${member.role.replace("_", " ")}) from the project.`,
+    });
+
+    if (user) {
+      notifications.notifyRemovedFromProject({ project, user, actor: req.user });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${name} removed from the project.`,
     });
   } catch (error) {
     return next(error);
@@ -377,6 +466,7 @@ module.exports = {
   getProjects,
   getProjectById,
   addProjectMember,
+  removeProjectMember,
   getProjectCurrency,
   getProjectActivity,
   getProjectReport,

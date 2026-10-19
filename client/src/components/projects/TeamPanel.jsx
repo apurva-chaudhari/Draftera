@@ -8,6 +8,27 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
   const [role, setRole] = useState("subcontractor");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+
+  async function handleRemove(member) {
+    const ok = window.confirm(
+      `Remove ${member.user.name} from this project?\n\nThey lose access straight away. Their past acknowledgments and questions stay in the project record.`
+    );
+    if (!ok) return;
+
+    setMessage(null);
+    setRemovingId(member.user._id);
+
+    try {
+      const response = await projectService.removeMember(project._id, member.user._id);
+      setMessage({ kind: "success", text: response.message });
+      onChanged();
+    } catch (requestError) {
+      setMessage({ kind: "error", text: requestError.message });
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   async function handleAdd(event) {
     event.preventDefault();
@@ -64,6 +85,7 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
         <div className="card-header">
           <h2>Project team ({project.members.length})</h2>
         </div>
+        {!isSupervisor && message && <Alert kind={message.kind}>{message.text}</Alert>}
         {project.members.map((member) => (
           <div className="list-item" key={member.user._id}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -73,9 +95,22 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
                 <span className="cell-sub">{member.user.email}</span>
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <span className="cell-title">{roleLabel(member.role)}</span>
-              <span className="cell-sub">Added {formatDate(member.addedAt)}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ textAlign: "right" }}>
+                <span className="cell-title">{roleLabel(member.role)}</span>
+                <span className="cell-sub">Added {formatDate(member.addedAt)}</span>
+              </div>
+              {isSupervisor && member.role !== "project_supervisor" && (
+                <button
+                  className="btn btn-secondary btn-sm btn-danger-outline"
+                  type="button"
+                  onClick={() => handleRemove(member)}
+                  disabled={removingId === member.user._id}
+                  aria-label={`Remove ${member.user.name} from the project`}
+                >
+                  {removingId === member.user._id ? "Removing…" : "Remove"}
+                </button>
+              )}
             </div>
           </div>
         ))}

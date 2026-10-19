@@ -5,6 +5,7 @@ const {
   getProjects,
   getProjectById,
   addProjectMember,
+  removeProjectMember,
   getProjectCurrency,
   getProjectActivity,
   getProjectReport,
@@ -19,6 +20,7 @@ router.post("/", createProject);
 router.get("/", getProjects);
 router.get("/:projectId", getProjectById);
 router.post("/:projectId/members", addProjectMember);
+router.delete("/:projectId/members/:userId", removeProjectMember);
 router.get("/:projectId/currency", getProjectCurrency);
 router.get("/:projectId/activity", getProjectActivity);
 router.get("/:projectId/report.csv", getProjectReport);

@@ -11,4 +11,6 @@
 | [testing.md](testing.md) | Test cases, how to run them, device checklist |
 | [security.md](security.md) | Controls, known gaps, rotating secrets |
 | [deployment.md](deployment.md) | Vercel + Render + Atlas + Supabase |
+| [notifications.md](notifications.md) | Email setup (Brevo), overdue reminders, why not WhatsApp |
+| [backup-restore.md](backup-restore.md) | Backup, verify, restore and rehearsal |
 | [defense-notes.md](defense-notes.md) | Likely discussion questions |

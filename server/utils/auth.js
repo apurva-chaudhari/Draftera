@@ -1,6 +1,7 @@
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { SESSION_HOURS } = require("./session");
 
 const SALT_ROUNDS = 12;
 
@@ -32,7 +33,7 @@ function generateToken(user) {
     },
     getJwtSecret(),
     {
-      expiresIn: "1h",
+      expiresIn: `${SESSION_HOURS}h`,
       issuer: "draftera-api",
       audience: "draftera-client",
     }

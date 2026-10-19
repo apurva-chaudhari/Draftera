@@ -1,60 +1,36 @@
-
 import { apiRequest } from "./api.js";
 
-const TOKEN_KEY = "draftera_token";
-const USER_KEY = "draftera_user";
-
-function saveSession(data, action) {
-  if (!data.token) {
-    throw new Error(
-      `${action} response did not include an authentication token.`
-    );
-  }
-
-  if (!data.user) {
-    throw new Error(`${action} response did not include user information.`);
-  }
-
-  localStorage.setItem(TOKEN_KEY, data.token);
-  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-
-  return data;
-}
-
+/**
+ * Sign-in state lives in an httpOnly cookie set by the server, so nothing is
+ * kept in localStorage and page scripts can never read the session token.
+ */
 const authService = {
-  async register(userData) {
-    const data = await apiRequest("/auth/register", {
+  register(userData) {
+    return apiRequest("/auth/register", {
       method: "POST",
       body: JSON.stringify(userData),
     });
-
-    return saveSession(data, "Registration");
   },
 
-  async login(credentials) {
-    const data = await apiRequest("/auth/login", {
+  login(credentials) {
+    return apiRequest("/auth/login", {
       method: "POST",
       body: JSON.stringify(credentials),
     });
-
-    return saveSession(data, "Login");
   },
 
-  async getCurrentUser() {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      throw new Error("You are not logged in.");
-    }
-
+  /** Asks the server who the cookie belongs to. Rejects when signed out. */
+  getCurrentUser() {
     return apiRequest("/auth/me");
   },
 
-  logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  },
-
-  getToken() {
-    return localStorage.getItem(TOKEN_KEY);
+  /** Ends the session on the server (clears the cookie). Never throws. */
+  async logout() {
+    try {
+      await apiRequest("/auth/logout", { method: "POST" });
+    } catch {
+      // Already signed out or offline: the user is leaving either way.
+    }
   },
 };
 

@@ -69,10 +69,14 @@ const listMyClarifications = async (req, res, next) => {
       .filter((p) => String(p.supervisor) === String(req.user._id))
       .map((p) => p._id);
 
+    // Only projects the person still belongs to: after being removed from a
+    // team they no longer see that project's questions, even their own.
+    const projectIds = projects.map((p) => p._id);
+
     const clarifications = await Clarification.find({
       $or: [
         { project: { $in: supervisedIds } },
-        { requestedBy: req.user._id },
+        { requestedBy: req.user._id, project: { $in: projectIds } },
       ],
     })
       .populate("requestedBy", "name")
