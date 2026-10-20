@@ -121,7 +121,36 @@ function makeNotifier({ mailer = defaultMailer, loadUsers, env = process.env } =
     );
   }
 
-  return { notifyRevisionPublished, notifyReminder, notifyAddedToProject, notifyRemovedFromProject };
+  /** Tell the team when the supervisor changes the project's status. Never throws. */
+  async function notifyProjectStatusChanged({ project, from, to, memberIds, actor }) {
+    try {
+      const users = await loadUsers(memberIds);
+      const results = await Promise.all(
+        users
+          .filter((u) => String(u._id) !== String(actor._id))
+          .map((user) =>
+            deliver(
+              user,
+              templates.projectStatusChanged({
+                recipientName: user.name,
+                projectCode: project.code,
+                projectName: project.name,
+                from,
+                to,
+                changedBy: actor.name,
+                link: `${base()}/projects/${project._id}`,
+              })
+            )
+          )
+      );
+      return { attempted: results.length, sent: results.filter((r) => r.sent).length };
+    } catch (error) {
+      console.error("Notification failed:", error.message);
+      return { attempted: 0, sent: 0 };
+    }
+  }
+
+  return { notifyRevisionPublished, notifyReminder, notifyAddedToProject, notifyRemovedFromProject, notifyProjectStatusChanged };
 }
 
 // Production instance. The model is required lazily so this file stays

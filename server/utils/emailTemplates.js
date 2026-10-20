@@ -102,4 +102,24 @@ function removedFromProject({ recipientName, projectCode, projectName, removedBy
   };
 }
 
-module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, escapeHtml };
+function projectStatusChanged({ recipientName, projectCode, projectName, from, to, changedBy, link }) {
+  const effect = {
+    "On hold": "Nothing new will be issued while it is on hold. Keep working from the revisions you already hold, and ask the supervisor if anything is unclear.",
+    Completed: "The project is now read-only. Its drawings and history stay available.",
+    Archived: "The project is closed and read-only. Its drawings and history stay available.",
+    Active: "Work has resumed. New revisions can be issued again.",
+  }[to];
+
+  const paragraphs = [
+    `Hi ${recipientName},`,
+    `${changedBy} changed ${projectCode} (${projectName}) from ${from} to ${to}.`,
+    ...(effect ? [effect] : []),
+  ];
+
+  return {
+    subject: `${projectCode} is now ${to}`,
+    ...layout({ heading: `${projectCode} is now ${to}`, paragraphs, buttonLabel: "Open the project", link }),
+  };
+}
+
+module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, projectStatusChanged, escapeHtml };
