@@ -18,9 +18,14 @@ const listMyAcknowledgments = async (req, res, next) => {
     // records stay in the database as history.
     const projectIds = await findAccessibleProjectIds(req.user._id);
 
+    // Work still to do only counts in projects that are running. What was
+    // already acknowledged stays listed whatever the project's status.
+    const openProjectIds = await findAccessibleProjectIds(req.user._id, { openOnly: true });
+
     const acknowledgments = await Acknowledgment.find({
       recipient: req.user._id,
       project: { $in: projectIds },
+      $or: [{ status: "acknowledged" }, { project: { $in: openProjectIds } }],
     })
       .populate({
         path: "revision",
