@@ -122,4 +122,37 @@ function projectStatusChanged({ recipientName, projectCode, projectName, from, t
   };
 }
 
-module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, projectStatusChanged, escapeHtml };
+const shorten = (text, max = 400) => {
+  const clean = String(text ?? "").replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+};
+
+function clarificationRequested({ supervisorName, projectCode, drawingNumber, revisionNumber, askedBy, question, link }) {
+  const paragraphs = [
+    `Hi ${supervisorName},`,
+    `${askedBy} asked a question about ${drawingNumber} Rev ${revisionNumber} on ${projectCode}:`,
+    `"${shorten(question)}"`,
+    "People are waiting on your answer before they continue.",
+  ];
+
+  return {
+    subject: `Question on ${drawingNumber} Rev ${revisionNumber} (${projectCode})`,
+    ...layout({ heading: `${askedBy} has a question about ${drawingNumber}`, paragraphs, buttonLabel: "Answer the question", link }),
+  };
+}
+
+function clarificationAnswered({ recipientName, projectCode, drawingNumber, revisionNumber, answeredBy, response, link }) {
+  const paragraphs = [
+    `Hi ${recipientName},`,
+    `${answeredBy} answered your question about ${drawingNumber} Rev ${revisionNumber} on ${projectCode}:`,
+    `"${shorten(response)}"`,
+    "If this solves it, open the question and mark it resolved. If not, ask again.",
+  ];
+
+  return {
+    subject: `Answer on ${drawingNumber} Rev ${revisionNumber} (${projectCode})`,
+    ...layout({ heading: `Your question about ${drawingNumber} was answered`, paragraphs, buttonLabel: "Read the answer", link }),
+  };
+}
+
+module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, projectStatusChanged, clarificationRequested, clarificationAnswered, shorten, escapeHtml };

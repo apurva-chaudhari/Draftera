@@ -6,6 +6,7 @@ const DrawingRevision = require("../models/DrawingRevision");
 const Clarification = require("../models/Clarification");
 const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
+const notifications = require("../services/notifications");
 
 const listClarifications = async (req, res, next) => {
   try {
@@ -167,6 +168,14 @@ const createClarification = async (req, res, next) => {
       message: `${req.user.name} asked a question about ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
     });
 
+    notifications.notifyClarificationRequested({
+      project,
+      revision,
+      drawingNumber: revision.drawing?.drawingNumber,
+      question: clarification.question,
+      actor: req.user,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Clarification submitted.",
@@ -246,6 +255,22 @@ const respondToClarification = async (req, res, next) => {
       action: "clarification_answered",
       message: `${req.user.name} answered a clarification.`,
     });
+
+    // Best effort: look up the drawing for the email, never fail the answer.
+    DrawingRevision.findById(clarification.revision)
+      .populate("drawing", "drawingNumber")
+      .then((revision) =>
+        revision &&
+        notifications.notifyClarificationAnswered({
+          project,
+          revision,
+          drawingNumber: revision.drawing?.drawingNumber,
+          askerId: clarification.requestedBy,
+          response: clarification.response,
+          actor: req.user,
+        })
+      )
+      .catch((error) => console.error("Notification failed:", error.message));
 
     return res.status(200).json({
       success: true,
