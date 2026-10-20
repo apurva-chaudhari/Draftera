@@ -1,7 +1,33 @@
 import { Link } from "react-router-dom";
-import { RevisionStatus } from "../ui/Badge.jsx";
+import Badge, { RecipientStatus, RevisionStatus } from "../ui/Badge.jsx";
 import RevChip from "../ui/RevChip.jsx";
-import { formatDate } from "../../utils/format.js";
+import { dueLabel, formatDate, isOverdue } from "../../utils/format.js";
+
+/**
+ * What a team member sees instead of the team's progress: only their own
+ * standing on this revision. (Only the supervisor sees who else has or has
+ * not acknowledged.)
+ */
+function MyStatus({ revision }) {
+  const { myStatus } = revision;
+
+  if (myStatus === "not_issued") {
+    return <Badge tone="neutral">Not issued to you</Badge>;
+  }
+
+  const waiting = myStatus !== "acknowledged" && revision.status === "published";
+
+  return (
+    <>
+      <RecipientStatus status={myStatus} />
+      {waiting && revision.ackDueAt && (
+        <span className={`cell-sub due-text ${isOverdue(revision.ackDueAt) ? "late" : ""}`}>
+          {dueLabel(revision.ackDueAt)}
+        </span>
+      )}
+    </>
+  );
+}
 
 function AckProgress({ summary, status }) {
   if (status === "draft") return <span className="cell-sub">Not issued yet</span>;
@@ -20,6 +46,9 @@ function AckProgress({ summary, status }) {
 }
 
 function RevisionTable({ revisions }) {
+  // Members get a personal status column; the supervisor gets team progress.
+  const personal = revisions.some((revision) => revision.myStatus);
+
   return (
     <div className="table-wrap">
       <table className="table table-cards">
@@ -29,7 +58,7 @@ function RevisionTable({ revisions }) {
             <th>Rev</th>
             <th>Status</th>
             <th>Issued</th>
-            <th>Acknowledged</th>
+            <th>{personal ? "Your status" : "Acknowledged"}</th>
             <th />
           </tr>
         </thead>
@@ -43,7 +72,9 @@ function RevisionTable({ revisions }) {
               <td data-label="Rev"><RevChip revision={revision.revisionNumber} superseded={revision.status === "superseded"} /></td>
               <td data-label="Status"><RevisionStatus status={revision.status} /></td>
               <td data-label="Issued">{formatDate(revision.issueDate)}</td>
-              <td data-label="Acknowledged"><AckProgress summary={revision.ackSummary} status={revision.status} /></td>
+              <td data-label={personal ? "Your status" : "Acknowledged"}>
+                {personal ? <MyStatus revision={revision} /> : <AckProgress summary={revision.ackSummary} status={revision.status} />}
+              </td>
               <td data-label="" style={{ textAlign: "right" }}>
                 <Link to={`/revisions/${revision._id}`}>
                   {revision.status === "draft" ? "Review & publish" : "Open"}
