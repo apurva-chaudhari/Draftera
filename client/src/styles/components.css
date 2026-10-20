@@ -1101,3 +1101,31 @@ a.history-item:hover {
   .tr-warning { margin-top: 10px; font-weight: 700; }
   .tr-foot { margin-top: 24px; font-size: 8.5pt; border-top: 1px solid #000; padding-top: 6px; }
 }
+
+/* ---- Site-tape edge on warnings, like hazard tape on a barrier ---- */
+.alert-warning {
+  position: relative;
+  overflow: hidden;
+  padding-left: 26px;
+}
+
+.alert-warning::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-accent-bright) 0 6px,
+    var(--color-ink) 6px 12px
+  );
+}
+
+/* A dimension-line rule on top of each overview figure. */
+.stat-card {
+  border-top: 3px solid var(--color-ink);
+}
+
+.stat-card.attention {
+  border-top-color: var(--color-accent-bright);
+}
