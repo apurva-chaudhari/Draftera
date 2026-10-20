@@ -9,7 +9,7 @@ const { logActivity } = require("../utils/activity");
 const { loadProjectCurrency } = require("../services/currencyService");
 const { buildDistributionCsv } = require("../utils/report");
 const notifications = require("../services/notifications");
-const { PROJECT_STATUSES, STATUS_LABELS } = require("../utils/projectRules");
+const { PROJECT_STATUSES, STATUS_LABELS, canDo, blockedMessage } = require("../utils/projectRules");
 
 // Roles a supervisor may grant when adding someone to a project team.
 const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
@@ -223,6 +223,13 @@ const addProjectMember = async (req, res, next) => {
       });
     }
 
+    if (!canDo(project.status, "addMember")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project.status, "addMember"),
+      });
+    }
+
     const { email, role } = req.body || {};
 
     if (typeof email !== "string" || !email.trim()) {
@@ -306,6 +313,13 @@ const removeProjectMember = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the project supervisor can remove team members.",
+      });
+    }
+
+    if (!canDo(project.status, "removeMember")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project.status, "removeMember"),
       });
     }
 

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const User = require("../models/User");
 const Drawing = require("../models/Drawing");
 const DrawingRevision = require("../models/DrawingRevision");
@@ -80,8 +81,8 @@ const publishRevision = async (req, res, next) => {
         throw httpError(403, "Only the project supervisor can publish revisions.");
       }
 
-      if (project.status !== "active") {
-        throw httpError(400, "This project is not active.");
+      if (!canDo(project.status, "publish")) {
+        throw httpError(409, blockedMessage(project.status, "publish"));
       }
 
       if (revision.status !== "draft") {
@@ -504,6 +505,13 @@ const addRecipients = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the project supervisor can add recipients.",
+      });
+    }
+
+    if (!canDo(project.status, "issue")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project.status, "issue"),
       });
     }
 

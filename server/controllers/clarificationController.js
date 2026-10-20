@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const DrawingRevision = require("../models/DrawingRevision");
 const Clarification = require("../models/Clarification");
 const { getProjectAccess } = require("../utils/projectAccess");
@@ -144,6 +145,13 @@ const createClarification = async (req, res, next) => {
       });
     }
 
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
+      });
+    }
+
     const clarification = await Clarification.create({
       project: revision.project,
       revision: revision._id,
@@ -207,6 +215,13 @@ const respondToClarification = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the project supervisor can respond.",
+      });
+    }
+
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
       });
     }
 
@@ -276,6 +291,13 @@ const resolveClarification = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the person who asked or the supervisor can resolve this.",
+      });
+    }
+
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
       });
     }
 

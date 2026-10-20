@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Acknowledgment = require("../models/Acknowledgment");
 const DrawingRevision = require("../models/DrawingRevision");
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const User = require("../models/User");
 const { logActivity } = require("../utils/activity");
 const { getProjectAccess, findAccessibleProjectIds } = require("../utils/projectAccess");
@@ -74,6 +75,13 @@ const acknowledgeRevision = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "You do not have access to this project.",
+      });
+    }
+
+    if (!canDo(acknowledgmentProject.status, "acknowledge")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(acknowledgmentProject.status, "acknowledge"),
       });
     }
 
@@ -160,6 +168,13 @@ const sendReminder = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the project supervisor can send reminders.",
+      });
+    }
+
+    if (!canDo(project.status, "remind")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project.status, "remind"),
       });
     }
 

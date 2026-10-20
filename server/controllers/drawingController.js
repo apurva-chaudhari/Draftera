@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const path = require("path");
 
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const Drawing = require("../models/Drawing");
 const DrawingRevision = require("../models/DrawingRevision");
 const supabase = require("../config/storage");
@@ -118,10 +119,10 @@ const uploadDrawingRevision = async (req, res, next) => {
       });
     }
 
-    if (project.status !== "active") {
-      return res.status(400).json({
+    if (!canDo(project.status, "upload")) {
+      return res.status(409).json({
         success: false,
-        message: "Drawings cannot be uploaded to an inactive project.",
+        message: blockedMessage(project.status, "upload"),
       });
     }
 
