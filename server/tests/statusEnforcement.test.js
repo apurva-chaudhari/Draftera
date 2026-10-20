@@ -39,6 +39,7 @@ function projectController(project, extra = {}) {
     "../models/Project": Project,
     "../models/User": { findById: () => ({ select: async () => ({ _id: SUB, name: "Rohan" }) }) },
     "../models/ActivityLog": {},
+    "../models/Acknowledgment": {},
     "../models/Clarification": {},
     "../utils/activity": { logActivity: async () => {} },
     "../services/currencyService": {},

@@ -51,6 +51,7 @@ function setup(status = "active") {
     "../models/Project": Project,
     "../models/User": {},
     "../models/ActivityLog": {},
+    "../models/Acknowledgment": {},
     "../models/Clarification": {},
     "../utils/activity": { logActivity: async (event) => log.push(event) },
     "../services/currencyService": {},
