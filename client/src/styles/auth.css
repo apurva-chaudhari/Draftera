@@ -242,3 +242,10 @@
   background: #fff;
   font-size: 14px;
 }
+
+.auth-hint {
+  margin: -4px 0 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
