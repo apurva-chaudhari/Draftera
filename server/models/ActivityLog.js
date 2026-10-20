@@ -6,6 +6,8 @@ const ACTIVITY_ACTIONS = [
   "project_created",
   "member_added",
   "member_removed",
+  "project_status_changed",
+  "project_updated",
   "revision_uploaded",
   "revision_published",
   "revision_opened",

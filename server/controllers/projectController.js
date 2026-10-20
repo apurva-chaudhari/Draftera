@@ -9,6 +9,7 @@ const { logActivity } = require("../utils/activity");
 const { loadProjectCurrency } = require("../services/currencyService");
 const { buildDistributionCsv } = require("../utils/report");
 const notifications = require("../services/notifications");
+const { PROJECT_STATUSES, STATUS_LABELS } = require("../utils/projectRules");
 
 // Roles a supervisor may grant when adding someone to a project team.
 const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
@@ -372,6 +373,113 @@ const removeProjectMember = async (req, res, next) => {
   }
 };
 
+/**
+ * Change a project's status, name or description (supervisor only).
+ *
+ * The project code is fixed on purpose: it appears on every drawing record
+ * and in reports, so renaming it would make old records hard to match.
+ * Changing the status takes effect at once (see utils/projectRules.js) and
+ * the team is told by email.
+ */
+const updateProject = async (req, res, next) => {
+  try {
+    const loaded = await loadAccessibleProject(req, res);
+    if (!loaded) return undefined;
+
+    const { project, access } = loaded;
+
+    if (!access.isSupervisor) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project supervisor can change project settings.",
+      });
+    }
+
+    const body = req.body || {};
+    const supplied = ["status", "name", "description"].filter((key) => body[key] !== undefined);
+
+    if (supplied.length === 0) {
+      return res.status(400).json({ success: false, message: "Nothing to update." });
+    }
+
+    const fail = (message) => res.status(400).json({ success: false, message });
+    const changes = {};
+
+    if (body.status !== undefined) {
+      if (!PROJECT_STATUSES.includes(body.status)) {
+        return fail(`Status must be one of: ${PROJECT_STATUSES.join(", ")}.`);
+      }
+      if (body.status !== project.status) changes.status = body.status;
+    }
+
+    if (body.name !== undefined) {
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (name.length < 2 || name.length > 150) return fail("Project name must contain 2–150 characters.");
+      if (name !== project.name) changes.name = name;
+    }
+
+    if (body.description !== undefined) {
+      if (typeof body.description !== "string") return fail("Project description must be text.");
+      const description = body.description.trim();
+      if (description.length > 2000) return fail("Project description cannot exceed 2000 characters.");
+      if (description !== (project.description || "")) changes.description = description;
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No changes to save.",
+        project: { _id: project._id, name: project.name, code: project.code, description: project.description, status: project.status },
+      });
+    }
+
+    const previousStatus = project.status;
+    await Project.updateOne({ _id: project._id }, { $set: changes });
+
+    if (changes.status) {
+      await logActivity({
+        project: project._id,
+        actor: req.user._id,
+        action: "project_status_changed",
+        message: `${req.user.name} changed the project from ${STATUS_LABELS[previousStatus]} to ${STATUS_LABELS[changes.status]}.`,
+      });
+
+      notifications.notifyProjectStatusChanged({
+        project: { _id: project._id, code: project.code, name: changes.name || project.name },
+        from: STATUS_LABELS[previousStatus],
+        to: STATUS_LABELS[changes.status],
+        memberIds: project.members.map((m) => m.user),
+        actor: req.user,
+      });
+    }
+
+    if (changes.name || changes.description !== undefined) {
+      await logActivity({
+        project: project._id,
+        actor: req.user._id,
+        action: "project_updated",
+        message: `${req.user.name} updated the project ${[changes.name && "name", changes.description !== undefined && "description"].filter(Boolean).join(" and ")}.`,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: changes.status
+        ? `Project is now ${STATUS_LABELS[changes.status]}.`
+        : "Project details saved.",
+      project: {
+        _id: project._id,
+        code: project.code,
+        name: changes.name || project.name,
+        description: changes.description !== undefined ? changes.description : project.description,
+        status: changes.status || project.status,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const getProjectCurrency = async (req, res, next) => {
   try {
     const loaded = await loadAccessibleProject(req, res);
@@ -467,6 +575,7 @@ module.exports = {
   getProjectById,
   addProjectMember,
   removeProjectMember,
+  updateProject,
   getProjectCurrency,
   getProjectActivity,
   getProjectReport,
