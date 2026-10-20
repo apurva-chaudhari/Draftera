@@ -966,3 +966,67 @@ a.history-item:hover {
     text-align: right;
   }
 }
+
+/* ---- Project settings: status picker ---- */
+.status-options {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-strong);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.status-option input {
+  margin-top: 4px;
+  accent-color: var(--color-primary);
+}
+
+.status-option-body {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.status-option-body strong {
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.status-option-body em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--color-text-faint);
+}
+
+.status-option.tone-active { border-left-color: var(--color-success); }
+.status-option.tone-on_hold { border-left-color: var(--color-accent-bright); }
+.status-option.tone-completed { border-left-color: var(--color-info); }
+.status-option.tone-archived { border-left-color: var(--color-neutral); }
+
+.status-option.selected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 720px) {
+  .status-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A project that is not running says so on its card. */
+.project-card.status-on_hold { border-left: 4px solid var(--color-accent-bright); }
+.project-card.status-completed { border-left: 4px solid var(--color-info); }
+.project-card.status-archived { border-left: 4px solid var(--color-neutral); opacity: 0.82; }

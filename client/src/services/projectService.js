@@ -16,6 +16,14 @@ const projectService = {
     });
   },
 
+  /** Change status, name or description (supervisor only). */
+  update(projectId, payload) {
+    return apiRequest(`/projects/${projectId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
   addMember(projectId, payload) {
     return apiRequest(`/projects/${projectId}/members`, {
       method: "POST",
