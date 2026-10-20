@@ -74,3 +74,41 @@ export function dueLabel(dueAt, now = Date.now()) {
     ? `Overdue since ${dateTimeFormatter.format(new Date(dueAt))}`
     : `Due ${dateTimeFormatter.format(new Date(dueAt))}`;
 }
+
+/** What each project status means, in words the whole team can read. */
+export const PROJECT_STATUS_OPTIONS = [
+  {
+    value: "active",
+    label: "Active",
+    effect: "Normal work. Drawings can be uploaded, issued, acknowledged and discussed.",
+  },
+  {
+    value: "on_hold",
+    label: "On hold",
+    effect:
+      "Paused. Nothing new can be issued, but the team can still acknowledge and ask questions about what they already hold.",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    effect: "Finished. Everything becomes read-only; drawings and history stay available.",
+  },
+  {
+    value: "archived",
+    label: "Archived",
+    effect: "Closed and moved out of the way. Read-only, and hidden from the default project list.",
+  },
+];
+
+/** Projects with live work: these show up in tasks, risks and the overview. */
+export function isOpenProject(status) {
+  return status === "active" || status === "on_hold";
+}
+
+/** The banner shown on a project that is not Active, or null when none is needed. */
+export function statusNotice(status) {
+  if (status === "on_hold") return "This project is on hold. Nothing new can be issued until it is set back to Active.";
+  if (status === "completed") return "This project is completed and read-only.";
+  if (status === "archived") return "This project is archived and read-only.";
+  return null;
+}

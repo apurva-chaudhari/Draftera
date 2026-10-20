@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dueLabel, greeting, initials, isOverdue, roleLabel, timeAgo } from "./format.js";
+import {
+  PROJECT_STATUS_OPTIONS,
+  dueLabel,
+  greeting,
+  initials,
+  isOpenProject,
+  isOverdue,
+  roleLabel,
+  statusNotice,
+  timeAgo,
+} from "./format.js";
 
 const NOW = new Date("2026-10-20T12:00:00Z").getTime();
 
@@ -40,4 +50,28 @@ test("timeAgo reports recency in friendly units", () => {
 
 test("greeting returns a time-of-day greeting", () => {
   assert.match(greeting(), /^Good (morning|afternoon|evening)$/);
+});
+
+test("every project status is described and has a label", () => {
+  assert.deepEqual(
+    PROJECT_STATUS_OPTIONS.map((o) => o.value),
+    ["active", "on_hold", "completed", "archived"]
+  );
+  for (const option of PROJECT_STATUS_OPTIONS) {
+    assert.ok(option.label && option.effect.length > 20, option.value);
+  }
+});
+
+test("only active and on-hold projects count as open", () => {
+  assert.equal(isOpenProject("active"), true);
+  assert.equal(isOpenProject("on_hold"), true);
+  assert.equal(isOpenProject("completed"), false);
+  assert.equal(isOpenProject("archived"), false);
+});
+
+test("statusNotice explains non-active projects and is silent for active ones", () => {
+  assert.equal(statusNotice("active"), null);
+  assert.match(statusNotice("on_hold"), /on hold/);
+  assert.match(statusNotice("completed"), /read-only/);
+  assert.match(statusNotice("archived"), /archived/);
 });
