@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
 const { canDo, blockedMessage } = require("../utils/projectRules");
+const { activityScope, isScopedToIssued, myStatusFor } = require("../utils/roleScope");
 const User = require("../models/User");
 const Drawing = require("../models/Drawing");
 const DrawingRevision = require("../models/DrawingRevision");
@@ -232,6 +233,24 @@ const listProjectRevisions = async (req, res, next) => {
     const filter = { project: projectId };
     if (!access.isSupervisor) filter.status = { $ne: "draft" };
 
+    // Everyone but the supervisor sees their own standing, not the team's.
+    // Subcontractors only see drawings that were issued to them.
+    let mine = null;
+    if (!access.isSupervisor) {
+      const myAcknowledgments = await Acknowledgment.find({
+        project: project._id,
+        recipient: req.user._id,
+      })
+        .select("revision status viewedAt")
+        .lean();
+
+      mine = new Map(myAcknowledgments.map((a) => [String(a.revision), a]));
+
+      if (isScopedToIssued(access.memberRole)) {
+        filter._id = { $in: [...mine.keys()] };
+      }
+    }
+
     const revisions = await DrawingRevision.find(filter)
       .populate("drawing", "drawingNumber title")
       .sort({ createdAt: -1 })
@@ -239,7 +258,7 @@ const listProjectRevisions = async (req, res, next) => {
       .lean();
 
     // One aggregate gives acknowledgment progress for every revision.
-    const progress = await Acknowledgment.aggregate([
+    const progress = !access.isSupervisor ? [] : await Acknowledgment.aggregate([
       { $match: { project: project._id } },
       {
         $group: {
@@ -260,6 +279,10 @@ const listProjectRevisions = async (req, res, next) => {
     );
 
     const withProgress = revisions.map((revision) => {
+      if (mine) {
+        return { ...revision, myStatus: myStatusFor(mine.get(String(revision._id))) };
+      }
+
       const p = progressByRevision.get(String(revision._id));
       return {
         ...revision,
@@ -313,6 +336,20 @@ async function loadRevisionForUser(req, res) {
     return null;
   }
 
+  // Need to know: a subcontractor can only open what was issued to them.
+  // Answer "not found", not "forbidden", so they cannot probe for drawings.
+  if (isScopedToIssued(access.memberRole)) {
+    const issued = await Acknowledgment.exists({
+      revision: revision._id,
+      recipient: req.user._id,
+    });
+
+    if (!issued) {
+      res.status(404).json({ success: false, message: "Drawing revision not found." });
+      return null;
+    }
+  }
+
   return { revision, project, access };
 }
 
@@ -322,6 +359,12 @@ const getRevisionDetail = async (req, res, next) => {
     if (!loaded) return undefined;
 
     const { revision, project, access } = loaded;
+
+    // What this person may know about other people's progress and about
+    // drawings that were not issued to them (see utils/roleScope.js).
+    const issuedRevisionIds = access.isSupervisor
+      ? []
+      : await Acknowledgment.find({ project: project._id, recipient: req.user._id }).distinct("revision");
 
     const [
       drawing,
@@ -342,7 +385,10 @@ const getRevisionDetail = async (req, res, next) => {
         .populate("respondedBy", "name")
         .sort({ createdAt: -1 })
         .lean(),
-      ActivityLog.find({ revision: revision._id })
+      ActivityLog.find({
+        revision: revision._id,
+        ...activityScope({ ...access, userId: req.user._id, issuedRevisionIds }),
+      })
         .populate("actor", "name")
         .sort({ createdAt: -1 })
         .limit(50)
@@ -362,6 +408,7 @@ const getRevisionDetail = async (req, res, next) => {
       DrawingRevision.find({
         drawing: revision.drawing,
         ...(access.isSupervisor ? {} : { status: { $ne: "draft" } }),
+        ...(isScopedToIssued(access.memberRole) ? { _id: { $in: issuedRevisionIds } } : {}),
       })
         .select("revisionNumber status issueDate publishedAt changeSummary")
         .sort({ createdAt: -1 })
