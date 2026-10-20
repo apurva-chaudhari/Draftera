@@ -89,6 +89,34 @@ Publishing supersedes the previous revision and asks people to act, and it
 cannot be undone from the UI. The confirm screen states who will receive it,
 what it supersedes and who is being left out.
 
+### D13. Subcontractors see only what was issued to them
+Site engineers see every issued drawing; subcontractors see only the drawings
+issued to them, their history, and team events about those drawings. Drawings
+outside their scope answer "not found". *Why:* subcontractors work to a narrow
+scope, and an empty or unexpected drawing list is itself the clearest signal of
+"you were not issued the latest revision". *Alternative:* show everything to
+everyone, simpler but noisy and weaker on need-to-know.
+
+### D14. Members see their own status, not the team's
+A subcontractor used to see "1/2 acknowledged" with no way to know who the
+other person was. Only the supervisor sees other people's progress; everyone
+else sees their own standing and deadline. The same rule applies to the
+activity feeds: opens, acknowledgments, reminders and draft uploads are the
+supervisor's view.
+
+### D15. Project status is a rule table, not a label
+`on hold`, `completed` and `archived` change behaviour (see
+`roles-and-permissions.md`). The rules live in one file
+(`server/utils/projectRules.js`) so every endpoint agrees. On hold pauses new
+work but lets people finish what they hold; completed and archived are
+read-only; finished projects stop adding to anyone's "waiting on you".
+*Alternative:* a cosmetic label, which looked like a feature but did nothing.
+
+### D16. A printable issue record
+Site offices keep a transmittal on file as proof of who was told what. The
+supervisor can print one per revision: what changed, what it replaced, and each
+person's opened and acknowledged times.
+
 ## 3. Technology choices
 
 | Choice | Reason | Alternative considered |

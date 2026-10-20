@@ -92,6 +92,15 @@ Use a separate throwaway database, never the one holding your real data. CI runs
 | B1 | Backup | Backup verifies and restores exactly; encrypted file holds no readable data | identical |
 | B2 | Backup | Wrong passphrase, tampering, truncation, damaged PDF, invalid file | refused, nothing written |
 | B3 | Backup | Restore into non-empty database refused; `--replace` swaps; large collections in batches | yes |
+| P1 | Status | Supervisor sets hold / completed / archived / active; others cannot; invalid and empty requests; same status is a no-op | 200 / 403 / 400 / "No changes" |
+| P2 | Status | Hold refuses upload, publish, issue, remind, add member; people can still acknowledge and ask | 409, then 200 / 201 |
+| P3 | Status | Completed refuses acknowledge and questions; record stays readable; adds no work to tasks or the overview | 409, 200, 0 pending |
+| P4 | Status | The project code cannot be changed; name and description are validated | code unchanged |
+| V1 | Roles | Subcontractor never sees, opens or fetches a drawing not issued to them | 404 |
+| V2 | Roles | Members see `myStatus`, never team counts; engineers see all issued drawings | yes |
+| V3 | Roles | Activity feeds hide other people's opens, acknowledgments, reminders and draft uploads | hidden |
+| V4 | Roles | Overview reports `supervisedProjects`; the client shows risks only to supervisors | yes |
+| E1 | Email | Status change emails the team except the actor; question emails the supervisor; answer emails the asker | yes |
 
 ## Manual test checklist (phone, tablet, laptop)
 
