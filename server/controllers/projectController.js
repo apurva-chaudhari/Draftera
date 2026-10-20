@@ -10,6 +10,8 @@ const { loadProjectCurrency } = require("../services/currencyService");
 const { buildDistributionCsv } = require("../utils/report");
 const notifications = require("../services/notifications");
 const { PROJECT_STATUSES, STATUS_LABELS, canDo, blockedMessage } = require("../utils/projectRules");
+const { activityScope, isScopedToIssued } = require("../utils/roleScope");
+const Acknowledgment = require("../models/Acknowledgment");
 
 // Roles a supervisor may grant when adding someone to a project team.
 const ASSIGNABLE_MEMBER_ROLES = ["site_engineer", "subcontractor"];
@@ -571,7 +573,17 @@ const getProjectActivity = async (req, res, next) => {
     const loaded = await loadAccessibleProject(req, res);
     if (!loaded) return undefined;
 
-    const activity = await ActivityLog.find({ project: loaded.project._id })
+    const { project, access } = loaded;
+
+    // Other people's progress and unissued drawings are not the team's business.
+    const issuedRevisionIds = isScopedToIssued(access.memberRole)
+      ? await Acknowledgment.find({ project: project._id, recipient: req.user._id }).distinct("revision")
+      : [];
+
+    const activity = await ActivityLog.find({
+      project: project._id,
+      ...activityScope({ ...access, userId: req.user._id, issuedRevisionIds }),
+    })
       .populate("actor", "name")
       .sort({ createdAt: -1 })
       .limit(100)
