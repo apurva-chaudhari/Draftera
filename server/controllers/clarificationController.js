@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const DrawingRevision = require("../models/DrawingRevision");
 const Clarification = require("../models/Clarification");
 const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
+const notifications = require("../services/notifications");
 
 const listClarifications = async (req, res, next) => {
   try {
@@ -144,6 +146,13 @@ const createClarification = async (req, res, next) => {
       });
     }
 
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
+      });
+    }
+
     const clarification = await Clarification.create({
       project: revision.project,
       revision: revision._id,
@@ -157,6 +166,14 @@ const createClarification = async (req, res, next) => {
       actor: req.user._id,
       action: "clarification_requested",
       message: `${req.user.name} asked a question about ${revision.drawing?.drawingNumber} Rev ${revision.revisionNumber}.`,
+    });
+
+    notifications.notifyClarificationRequested({
+      project,
+      revision,
+      drawingNumber: revision.drawing?.drawingNumber,
+      question: clarification.question,
+      actor: req.user,
     });
 
     return res.status(201).json({
@@ -210,6 +227,13 @@ const respondToClarification = async (req, res, next) => {
       });
     }
 
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
+      });
+    }
+
     if (clarification.status === "resolved") {
       return res.status(409).json({
         success: false,
@@ -231,6 +255,22 @@ const respondToClarification = async (req, res, next) => {
       action: "clarification_answered",
       message: `${req.user.name} answered a clarification.`,
     });
+
+    // Best effort: look up the drawing for the email, never fail the answer.
+    DrawingRevision.findById(clarification.revision)
+      .populate("drawing", "drawingNumber")
+      .then((revision) =>
+        revision &&
+        notifications.notifyClarificationAnswered({
+          project,
+          revision,
+          drawingNumber: revision.drawing?.drawingNumber,
+          askerId: clarification.requestedBy,
+          response: clarification.response,
+          actor: req.user,
+        })
+      )
+      .catch((error) => console.error("Notification failed:", error.message));
 
     return res.status(200).json({
       success: true,
@@ -276,6 +316,13 @@ const resolveClarification = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the person who asked or the supervisor can resolve this.",
+      });
+    }
+
+    if (!canDo(project?.status, "clarify")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project?.status, "clarify"),
       });
     }
 

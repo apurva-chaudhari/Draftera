@@ -7,12 +7,23 @@ import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedbac
 import RevChip from "../components/ui/RevChip.jsx";
 import { greeting, timeAgo } from "../utils/format.js";
 
-const STATS = [
-  { key: "activeProjects", label: "Active projects", detail: "Projects in progress" },
-  { key: "currentDrawings", label: "Current revisions", detail: "Published and in force" },
-  { key: "pendingAcknowledgments", label: "Waiting on you", detail: "Revisions to acknowledge" },
-  { key: "openClarifications", label: "Open questions", detail: "Not yet answered" },
-];
+// The overview adapts to the role: a supervisor watches the whole project,
+// everyone else sees their own work. Current revisions and revision risks are
+// the supervisor's view, so members never see them.
+function statsFor(supervises) {
+  return [
+    { key: "activeProjects", label: "Active projects", detail: "Projects in progress" },
+    ...(supervises
+      ? [{ key: "currentDrawings", label: "Current revisions", detail: "Published and in force" }]
+      : []),
+    { key: "pendingAcknowledgments", label: "Waiting on you", detail: "Revisions to acknowledge" },
+    {
+      key: "openClarifications",
+      label: "Open questions",
+      detail: supervises ? "Waiting for an answer" : "Yours, not yet answered",
+    },
+  ];
+}
 
 function Dashboard() {
   const { user } = useAuth();
@@ -26,16 +37,21 @@ function Dashboard() {
   if (!data) return <Loading label="Loading your overview…" />;
 
   const { summary, pendingItems, atRisk, recentActivity } = data;
+  const supervises = summary.supervisedProjects > 0;
 
   return (
     <>
       <PageHeader
         title={`${greeting()}, ${firstName}`}
-        description="What needs attention across your projects right now."
+        description={
+          supervises
+            ? "Who is working from which revision, and what needs your attention."
+            : "The drawings issued to you and what you still need to confirm."
+        }
       />
 
       <div className="grid-4">
-        {STATS.map((stat) => (
+        {statsFor(supervises).map((stat) => (
           <div className="card stat-card" key={stat.key}>
             <div className="stat-label">{stat.label}</div>
             <div className="stat-value">{summary[stat.key]}</div>
@@ -49,14 +65,14 @@ function Dashboard() {
             <div className="stat-detail">Deadline has passed</div>
           </div>
         )}
-        {summary.overduePeople > 0 && (
+        {supervises && summary.overduePeople > 0 && (
           <div className="card stat-card attention">
             <div className="stat-label">Team members overdue</div>
             <div className="stat-value">{summary.overduePeople}</div>
             <div className="stat-detail">Past the acknowledgment deadline</div>
           </div>
         )}
-        {summary.atRiskRecipients > 0 && (
+        {supervises && summary.atRiskRecipients > 0 && (
           <div className="card stat-card attention">
             <div className="stat-label">People possibly on an old revision</div>
             <div className="stat-value">{summary.atRiskRecipients}</div>
@@ -65,7 +81,7 @@ function Dashboard() {
         )}
       </div>
 
-      <div className="grid-2">
+      <div className={supervises ? "grid-2" : "stack"}>
         <section className="card">
           <div className="card-header">
             <h2>Waiting on you</h2>
@@ -86,6 +102,7 @@ function Dashboard() {
           )}
         </section>
 
+        {supervises && (
         <section className="card">
           <div className="card-header">
             <div>
@@ -111,6 +128,7 @@ function Dashboard() {
             ))
           )}
         </section>
+        )}
       </div>
 
       <section className="card">

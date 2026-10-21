@@ -6,6 +6,9 @@ const Acknowledgment = require("../models/Acknowledgment");
 const Clarification = require("../models/Clarification");
 const ActivityLog = require("../models/ActivityLog");
 const { loadProjectCurrency } = require("../services/currencyService");
+const { OPEN_STATUSES } = require("../utils/projectRules");
+const { activityScope } = require("../utils/roleScope");
+const { getProjectAccess } = require("../utils/projectAccess");
 
 /**
  * Everything on the overview page comes from persisted records.
@@ -18,13 +21,20 @@ async function getDashboardSummary(req, res, next) {
     const projects = await Project.find({
       $or: [{ supervisor: userId }, { "members.user": userId }],
     })
-      .select("_id status supervisor")
+      .select("_id status supervisor members")
       .lean();
 
     const projectIds = projects.map((project) => project._id);
-    const supervisedIds = projects
+    // Work lives in active and on-hold projects. Completed and archived ones
+    // stay readable but never add to "waiting on you" or the risk list.
+    const openProjects = projects.filter((p) => OPEN_STATUSES.includes(p.status));
+    const openIds = openProjects.map((p) => p._id);
+    const supervisedIds = openProjects
       .filter((p) => String(p.supervisor) === String(userId))
       .map((p) => p._id);
+    const supervisedProjects = projects.filter(
+      (p) => String(p.supervisor) === String(userId)
+    ).length;
 
     if (projectIds.length === 0) {
       return res.status(200).json({
@@ -37,6 +47,7 @@ async function getDashboardSummary(req, res, next) {
           atRiskRecipients: 0,
           overdueAcknowledgments: 0,
           overduePeople: 0,
+          supervisedProjects: 0,
         },
         pendingItems: [],
         atRisk: [],
@@ -47,13 +58,27 @@ async function getDashboardSummary(req, res, next) {
     // Only acknowledgments on the CURRENT published revision need action;
     // pending records on superseded revisions are moot.
     const publishedRevisionIds = await DrawingRevision.find({
-      project: { $in: projectIds },
+      project: { $in: openIds },
       status: "published",
     }).distinct("_id");
 
+    // Recent activity respects each role: in a project where you are not the
+    // supervisor you see team events and your own actions only.
+    const issuedRevisionIds = await Acknowledgment.find({
+      recipient: userId,
+      project: { $in: projectIds },
+    }).distinct("revision");
+
+    const activityFilter = {
+      $or: projects.map((p) => ({
+        project: p._id,
+        ...activityScope({ ...getProjectAccess(p, userId), userId, issuedRevisionIds }),
+      })),
+    };
+
     // Published revisions whose acknowledgment deadline has passed.
     const overdueRevisionIds = await DrawingRevision.find({
-      project: { $in: projectIds },
+      project: { $in: openIds },
       status: "published",
       ackDueAt: { $lt: new Date() },
     }).distinct("_id");
@@ -87,7 +112,7 @@ async function getDashboardSummary(req, res, next) {
         status: "open",
         $or: [
           { project: { $in: supervisedIds } },
-          { requestedBy: userId, project: { $in: projectIds } },
+          { requestedBy: userId, project: { $in: openIds } },
         ],
       }),
 
@@ -106,7 +131,7 @@ async function getDashboardSummary(req, res, next) {
         .limit(6)
         .lean(),
 
-      ActivityLog.find({ project: { $in: projectIds } })
+      ActivityLog.find(activityFilter)
         .populate("actor", "name")
         .populate("project", "code")
         .sort({ createdAt: -1 })
@@ -152,6 +177,7 @@ async function getDashboardSummary(req, res, next) {
         atRiskRecipients: atRisk.length,
         overdueAcknowledgments,
         overduePeople,
+        supervisedProjects,
       },
       pendingItems,
       atRisk: atRisk.slice(0, 6),

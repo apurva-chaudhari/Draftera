@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Acknowledgment = require("../models/Acknowledgment");
 const DrawingRevision = require("../models/DrawingRevision");
 const Project = require("../models/Project");
+const { canDo, blockedMessage } = require("../utils/projectRules");
 const User = require("../models/User");
 const { logActivity } = require("../utils/activity");
 const { getProjectAccess, findAccessibleProjectIds } = require("../utils/projectAccess");
@@ -17,9 +18,14 @@ const listMyAcknowledgments = async (req, res, next) => {
     // records stay in the database as history.
     const projectIds = await findAccessibleProjectIds(req.user._id);
 
+    // Work still to do only counts in projects that are running. What was
+    // already acknowledged stays listed whatever the project's status.
+    const openProjectIds = await findAccessibleProjectIds(req.user._id, { openOnly: true });
+
     const acknowledgments = await Acknowledgment.find({
       recipient: req.user._id,
       project: { $in: projectIds },
+      $or: [{ status: "acknowledged" }, { project: { $in: openProjectIds } }],
     })
       .populate({
         path: "revision",
@@ -74,6 +80,13 @@ const acknowledgeRevision = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "You do not have access to this project.",
+      });
+    }
+
+    if (!canDo(acknowledgmentProject.status, "acknowledge")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(acknowledgmentProject.status, "acknowledge"),
       });
     }
 
@@ -160,6 +173,13 @@ const sendReminder = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Only the project supervisor can send reminders.",
+      });
+    }
+
+    if (!canDo(project.status, "remind")) {
+      return res.status(409).json({
+        success: false,
+        message: blockedMessage(project.status, "remind"),
       });
     }
 

@@ -102,4 +102,57 @@ function removedFromProject({ recipientName, projectCode, projectName, removedBy
   };
 }
 
-module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, escapeHtml };
+function projectStatusChanged({ recipientName, projectCode, projectName, from, to, changedBy, link }) {
+  const effect = {
+    "On hold": "Nothing new will be issued while it is on hold. Keep working from the revisions you already hold, and ask the supervisor if anything is unclear.",
+    Completed: "The project is now read-only. Its drawings and history stay available.",
+    Archived: "The project is closed and read-only. Its drawings and history stay available.",
+    Active: "Work has resumed. New revisions can be issued again.",
+  }[to];
+
+  const paragraphs = [
+    `Hi ${recipientName},`,
+    `${changedBy} changed ${projectCode} (${projectName}) from ${from} to ${to}.`,
+    ...(effect ? [effect] : []),
+  ];
+
+  return {
+    subject: `${projectCode} is now ${to}`,
+    ...layout({ heading: `${projectCode} is now ${to}`, paragraphs, buttonLabel: "Open the project", link }),
+  };
+}
+
+const shorten = (text, max = 400) => {
+  const clean = String(text ?? "").replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+};
+
+function clarificationRequested({ supervisorName, projectCode, drawingNumber, revisionNumber, askedBy, question, link }) {
+  const paragraphs = [
+    `Hi ${supervisorName},`,
+    `${askedBy} asked a question about ${drawingNumber} Rev ${revisionNumber} on ${projectCode}:`,
+    `"${shorten(question)}"`,
+    "People are waiting on your answer before they continue.",
+  ];
+
+  return {
+    subject: `Question on ${drawingNumber} Rev ${revisionNumber} (${projectCode})`,
+    ...layout({ heading: `${askedBy} has a question about ${drawingNumber}`, paragraphs, buttonLabel: "Answer the question", link }),
+  };
+}
+
+function clarificationAnswered({ recipientName, projectCode, drawingNumber, revisionNumber, answeredBy, response, link }) {
+  const paragraphs = [
+    `Hi ${recipientName},`,
+    `${answeredBy} answered your question about ${drawingNumber} Rev ${revisionNumber} on ${projectCode}:`,
+    `"${shorten(response)}"`,
+    "If this solves it, open the question and mark it resolved. If not, ask again.",
+  ];
+
+  return {
+    subject: `Answer on ${drawingNumber} Rev ${revisionNumber} (${projectCode})`,
+    ...layout({ heading: `Your question about ${drawingNumber} was answered`, paragraphs, buttonLabel: "Read the answer", link }),
+  };
+}
+
+module.exports = { revisionIssued, reminder, addedToProject, removedFromProject, projectStatusChanged, clarificationRequested, clarificationAnswered, shorten, escapeHtml };

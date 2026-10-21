@@ -1,4 +1,5 @@
 const Project = require("../models/Project");
+const { OPEN_STATUSES } = require("./projectRules");
 
 /**
  * Work out what a user is allowed to do inside a project.
@@ -21,10 +22,14 @@ function getProjectAccess(project, userId) {
   };
 }
 
-/** Ids of every project the user supervises or belongs to. */
-async function findAccessibleProjectIds(userId) {
+/**
+ * Ids of every project the user supervises or belongs to. With
+ * { openOnly: true } projects that are completed or archived are left out.
+ */
+async function findAccessibleProjectIds(userId, { openOnly = false } = {}) {
   const projects = await Project.find({
     $or: [{ supervisor: userId }, { "members.user": userId }],
+    ...(openOnly ? { status: { $in: OPEN_STATUSES } } : {}),
   })
     .select("_id")
     .lean();

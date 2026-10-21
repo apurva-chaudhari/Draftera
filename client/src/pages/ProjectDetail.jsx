@@ -5,11 +5,13 @@ import projectService from "../services/projectService.js";
 import drawingService from "../services/drawingService.js";
 import ActivityTimeline from "../components/activity/ActivityTimeline.jsx";
 import CurrencyMatrix from "../components/currency/CurrencyMatrix.jsx";
+import ProjectSettings from "../components/projects/ProjectSettings.jsx";
 import TeamPanel from "../components/projects/TeamPanel.jsx";
 import RevisionTable from "../components/revisions/RevisionTable.jsx";
 import UploadRevisionForm from "../components/revisions/UploadRevisionForm.jsx";
 import { ProjectStatus } from "../components/ui/Badge.jsx";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
+import { statusNotice } from "../utils/format.js";
 
 function ProjectDetail() {
   const { projectId } = useParams();
@@ -86,7 +88,12 @@ function ProjectDetail() {
     ...(access.isSupervisor ? [{ id: "currency", label: "Revision currency" }] : []),
     { id: "team", label: `Team (${project.members.length})` },
     { id: "activity", label: "Activity" },
+    ...(access.isSupervisor ? [{ id: "settings", label: "Settings" }] : []),
   ];
+
+  const notice = statusNotice(project.status);
+  // A link to a tab this person cannot see (for example Settings) falls back to Drawings.
+  const current = tabs.some((item) => item.id === tab) ? tab : "drawings";
 
   return (
     <>
@@ -116,6 +123,17 @@ function ProjectDetail() {
 
       {downloadError && <Alert kind="error">{downloadError}</Alert>}
 
+      {notice && (
+        <Alert kind="warning">
+          {notice}{" "}
+          {access.isSupervisor && (
+            <button type="button" className="btn-link" onClick={() => setSearchParams({ tab: "settings" })}>
+              Change status
+            </button>
+          )}
+        </Alert>
+      )}
+
       {showUpload && (
         <UploadRevisionForm
           projectId={project._id}
@@ -129,13 +147,13 @@ function ProjectDetail() {
 
       <div className="tabs" role="tablist">
         {tabs.map((item) => (
-          <button key={item.id} role="tab" aria-selected={tab === item.id} className={`tab ${tab === item.id ? "active" : ""}`} onClick={() => setSearchParams({ tab: item.id })}>
+          <button key={item.id} role="tab" aria-selected={current === item.id} className={`tab ${current === item.id ? "active" : ""}`} onClick={() => setSearchParams({ tab: item.id })}>
             {item.label}
           </button>
         ))}
       </div>
 
-      {tab === "drawings" && (
+      {current === "drawings" && (
         <div className="card">
           {revisions.length === 0 ? (
             <EmptyState title="No drawings yet">
@@ -154,15 +172,23 @@ function ProjectDetail() {
         </div>
       )}
 
-      {tab === "currency" && access.isSupervisor && currency && (
+      {current === "currency" && access.isSupervisor && currency && (
         <CurrencyMatrix data={currency} onChanged={load} />
       )}
 
-      {tab === "team" && (
+      {current === "team" && (
         <TeamPanel project={project} isSupervisor={access.isSupervisor} onChanged={load} />
       )}
 
-      {tab === "activity" && (
+      {current === "settings" && access.isSupervisor && (
+        <ProjectSettings
+          key={`${project.status}|${project.name}|${project.description}`}
+          project={project}
+          onChanged={load}
+        />
+      )}
+
+      {current === "activity" && (
         <div className="card">
           <ActivityTimeline items={activity} />
         </div>

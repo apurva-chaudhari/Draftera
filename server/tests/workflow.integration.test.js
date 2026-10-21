@@ -463,6 +463,147 @@ test("workflow", { skip }, async (t) => {
     assert.equal((await call("GET", `/api/projects/${ctx.projectId}`, { token: people.rohan.token })).status, 200);
   });
 
+  const listRevisions = (token) => call("GET", `/api/drawings/project/${ctx.projectId}`, { token });
+  const drawingNumbers = (res) => res.data.revisions.map((r) => r.drawing.drawingNumber);
+
+  await t.test("need to know: members see only what concerns them", async () => {
+    const ele = await upload("A", { drawingNumber: "ELE-110", title: "Electrical layout" });
+    assert.equal(ele.status, 201, JSON.stringify(ele.data));
+    ctx.eleA = ele.data.revision._id;
+    assert.equal((await publish(ctx.eleA, [people.sneha.id])).status, 200);
+
+    // Rohan (subcontractor) was never issued ELE-110.
+    const rohan = await listRevisions(people.rohan.token);
+    assert.ok(!drawingNumbers(rohan).includes("ELE-110"), "subcontractor does not see unissued drawings");
+    assert.ok(drawingNumbers(rohan).includes("PLB-201"));
+    assert.ok(rohan.data.revisions.every((r) => r.ackSummary === undefined && r.myStatus), "own status, never team counts");
+
+    // Sneha (site engineer) sees the whole issued set, with her own status.
+    const sneha = await listRevisions(people.sneha.token);
+    assert.ok(drawingNumbers(sneha).includes("ELE-110"));
+    assert.equal(sneha.data.revisions.find((r) => r._id === ctx.eleA).myStatus, "pending");
+    const revBForSneha = sneha.data.revisions.find((r) => r._id === ctx.revB);
+    assert.ok(["pending", "opened", "acknowledged"].includes(revBForSneha.myStatus));
+
+    // The supervisor sees team progress and drafts.
+    const amit = await listRevisions(people.amit.token);
+    assert.ok(amit.data.revisions.every((r) => r.ackSummary));
+
+    // Detail and file link answer "not found", not "forbidden".
+    assert.equal((await call("GET", `/api/drawings/revision/${ctx.eleA}`, { token: people.rohan.token })).status, 404);
+    assert.equal((await call("POST", `/api/drawings/revision/${ctx.eleA}/open`, { token: people.rohan.token })).status, 404);
+    assert.equal((await call("GET", `/api/drawings/revision/${ctx.eleA}`, { token: people.sneha.token })).status, 200);
+  });
+
+  await t.test("activity feeds hide other people's progress and unissued drawings", async () => {
+    const personal = ["revision_opened", "revision_acknowledged", "reminder_sent", "revision_uploaded"];
+
+    const feed = await call("GET", `/api/projects/${ctx.projectId}/activity`, { token: people.rohan.token });
+    assert.equal(feed.status, 200);
+    assert.ok(
+      feed.data.activity.every((a) => !personal.includes(a.action) || String(a.actor?._id) === people.rohan.id),
+      "a subcontractor only sees their own opens and acknowledgments"
+    );
+    assert.ok(!feed.data.activity.some((a) => /ELE-110/.test(a.message)), "nothing about a drawing never issued to them");
+    assert.ok(feed.data.activity.some((a) => a.action === "revision_published"), "issued drawings still appear");
+
+    const supervisorFeed = await call("GET", `/api/projects/${ctx.projectId}/activity`, { token: people.amit.token });
+    assert.ok(supervisorFeed.data.activity.some((a) => a.action === "revision_opened"), "the supervisor sees everything");
+
+    const revisionFeed = await call("GET", `/api/drawings/revision/${ctx.revB}`, { token: people.rohan.token });
+    assert.ok(revisionFeed.data.activity.every((a) => !personal.includes(a.action) || String(a.actor?._id) === people.rohan.id));
+  });
+
+  await t.test("the overview is role-aware", async () => {
+    const supervisor = await call("GET", "/api/dashboard/summary", { token: people.amit.token });
+    assert.equal(supervisor.data.summary.supervisedProjects, 1);
+
+    const member = await call("GET", "/api/dashboard/summary", { token: people.sneha.token });
+    assert.equal(member.data.summary.supervisedProjects, 0);
+  });
+
+  await t.test("project status: hold pauses new work, completed is read-only, reopening restores it", async () => {
+    const patch = (token, body) => call("PATCH", `/api/projects/${ctx.projectId}`, { token, json: body });
+    const addVikram = () =>
+      call("POST", `/api/projects/${ctx.projectId}/members`, {
+        token: people.amit.token,
+        json: { email: "vikram@test.com", role: "subcontractor" },
+      });
+
+    assert.equal((await patch(people.sneha.token, { status: "on_hold" })).status, 403, "only the supervisor");
+    assert.equal((await patch(people.amit.token, { status: "finished" })).status, 400);
+    assert.equal((await patch(people.amit.token, {})).status, 400);
+
+    // A draft prepared before the hold proves publishing is refused later.
+    const draft = await upload("C");
+    assert.equal(draft.status, 201, JSON.stringify(draft.data));
+    ctx.revC = draft.data.revision._id;
+
+    // --- on hold
+    const hold = await patch(people.amit.token, { status: "on_hold" });
+    assert.equal(hold.status, 200, JSON.stringify(hold.data));
+    assert.equal(hold.data.project.status, "on_hold");
+
+    const blockedUpload = await upload("D");
+    assert.equal(blockedUpload.status, 409);
+    assert.match(blockedUpload.data.message, /on hold/);
+    assert.equal((await publish(ctx.revC, [people.sneha.id])).status, 409, "no publishing on hold");
+    assert.equal((await call("POST", `/api/acknowledgments/${ctx.revB}/remind/${people.kavita.id}`, { token: people.amit.token })).status, 409, "no reminders on hold");
+    assert.equal((await addVikram()).status, 409, "no new members on hold");
+
+    // People can still confirm and ask about what they already hold.
+    await call("POST", `/api/drawings/revision/${ctx.eleA}/open`, { token: people.sneha.token });
+    assert.equal((await call("POST", `/api/acknowledgments/${ctx.eleA}/acknowledge`, { token: people.sneha.token })).status, 200);
+    const ask = await call("POST", `/api/clarifications/revision/${ctx.revB}`, {
+      token: people.kavita.token,
+      json: { question: "Can we start Level 3 plumbing?" },
+    });
+    assert.equal(ask.status, 201);
+
+    // --- completed: read-only
+    assert.equal((await patch(people.amit.token, { status: "completed" })).status, 200);
+
+    const closedAsk = await call("POST", `/api/clarifications/revision/${ctx.revB}`, {
+      token: people.kavita.token,
+      json: { question: "One more question after completion" },
+    });
+    assert.equal(closedAsk.status, 409);
+    assert.match(closedAsk.data.message, /read-only/);
+    assert.equal((await call("POST", `/api/acknowledgments/${ctx.revB}/acknowledge`, { token: people.sneha.token })).status, 409);
+
+    // The record stays readable.
+    assert.equal((await listRevisions(people.sneha.token)).status, 200);
+    const projects = await call("GET", "/api/projects", { token: people.sneha.token });
+    assert.equal(projects.data.projects.find((p) => p._id === ctx.projectId).status, "completed");
+
+    // Closed projects add no work to anyone's list.
+    const mine = await call("GET", "/api/acknowledgments/mine", { token: people.sneha.token });
+    assert.ok(mine.data.acknowledgments.every((a) => a.status === "acknowledged"), "only finished history remains");
+    const dash = await call("GET", "/api/dashboard/summary", { token: people.sneha.token });
+    assert.equal(dash.data.summary.pendingAcknowledgments, 0);
+    assert.equal(dash.data.summary.activeProjects, 0);
+
+    // --- reopened
+    assert.equal((await patch(people.amit.token, { status: "active" })).status, 200);
+    assert.equal((await upload("D")).status, 201, "uploads work again");
+
+    const noChange = await patch(people.amit.token, { status: "active" });
+    assert.equal(noChange.data.message, "No changes to save.");
+
+    const trail = await call("GET", `/api/projects/${ctx.projectId}/activity`, { token: people.amit.token });
+    const changes = trail.data.activity.filter((a) => a.action === "project_status_changed");
+    assert.equal(changes.length, 3, "hold, complete and reopen are each audited");
+
+    // Team members see status changes, and the code stays fixed.
+    const memberTrail = await call("GET", `/api/projects/${ctx.projectId}/activity`, { token: people.sneha.token });
+    assert.ok(memberTrail.data.activity.some((a) => a.action === "project_status_changed"));
+
+    const rename = await patch(people.amit.token, { name: "Green Valley Phase 2", code: "HACK-1" });
+    assert.equal(rename.status, 200);
+    assert.equal(rename.data.project.code, "GVA-001");
+    assert.equal(rename.data.project.name, "Green Valley Phase 2");
+  });
+
   await t.test("deactivated users are locked out immediately", async () => {
     await mongoose.models.User.updateOne({ _id: people.kavita.id }, { isActive: false });
     const res = await call("GET", "/api/projects", { token: people.kavita.token });

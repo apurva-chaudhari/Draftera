@@ -31,6 +31,8 @@ const ActivityLog = require("../models/ActivityLog");
 
 const DEMO_PASSWORD = "Draftera#2026";
 const PROJECT_CODE = "DEMO-TOWER";
+// A finished project, so the status filter and read-only behaviour can be shown.
+const COMPLETED_CODE = "DEMO-HOSTEL";
 
 async function uploadPdf(projectId, name, lines) {
   const buffer = buildPdf(lines);
@@ -53,7 +55,13 @@ async function createUser(name, email, role) {
 }
 
 async function removeExistingDemo() {
-  const existing = await Project.findOne({ code: PROJECT_CODE });
+  for (const code of [PROJECT_CODE, COMPLETED_CODE]) {
+    await removeProject(code);
+  }
+}
+
+async function removeProject(code) {
+  const existing = await Project.findOne({ code });
   if (!existing) return;
 
   await Promise.all([
@@ -192,12 +200,32 @@ async function main() {
   await Acknowledgment.create({ project: project._id, revision: arcA._id, recipient: engineer._id, status: "pending" });
   await log(supervisor, "revision_published", `${supervisor.name} published ARC-204 Rev A to 1 recipient(s).`, arcA._id, daysAgo(1));
 
+  // ---- A finished project: read-only, hidden from the default list --------
+  const hostel = await Project.create({
+    name: "Sunrise Student Hostel",
+    code: COMPLETED_CODE,
+    description: "Completed last quarter. Kept to show read-only projects and the status filter.",
+    status: "completed",
+    supervisor: supervisor._id,
+    createdBy: supervisor._id,
+    members: [
+      { user: supervisor._id, role: "project_supervisor", addedBy: supervisor._id },
+      { user: engineer._id, role: "site_engineer", addedBy: supervisor._id },
+    ],
+  });
+
+  await ActivityLog.create([
+    { project: hostel._id, actor: supervisor._id, action: "project_created", message: `${supervisor.name} created project ${COMPLETED_CODE}.`, createdAt: daysAgo(120) },
+    { project: hostel._id, actor: supervisor._id, action: "project_status_changed", message: `${supervisor.name} changed the project from Active to Completed.`, createdAt: daysAgo(20) },
+  ]);
+
   console.log("\nDemo data created.\n");
   console.log("Sign in with any of these (password for all: " + DEMO_PASSWORD + ")");
   console.log("  supervisor@draftera.demo   project supervisor view");
   console.log("  engineer@draftera.demo     site engineer");
   console.log("  steel@draftera.demo        subcontractor still on STR-101 Rev A");
-  console.log("  electrical@draftera.demo   subcontractor missing from ARC-204 distribution\n");
+  console.log("  electrical@draftera.demo   subcontractor missing from ARC-204 distribution");
+  console.log("\nAlso created DEMO-HOSTEL (completed). Choose 'All statuses' on the Projects page to see it.\n");
 }
 
 main()

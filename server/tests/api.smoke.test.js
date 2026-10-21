@@ -46,6 +46,20 @@ for (const path of [
   });
 }
 
+for (const [method, path] of [
+  ["PATCH", "/api/projects/507f1f77bcf86cd799439011"],
+  ["DELETE", "/api/projects/507f1f77bcf86cd799439011/members/507f1f77bcf86cd799439012"],
+]) {
+  test(`${method} ${path} requires authentication`, async () => {
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: method === "PATCH" ? JSON.stringify({ status: "archived" }) : undefined,
+    });
+    assert.equal(res.status, 401);
+  });
+}
+
 test("a forged session cookie is rejected", async () => {
   const res = await fetch(`${base}/api/projects`, {
     headers: { Cookie: "draftera_session=not.a.real.token" },

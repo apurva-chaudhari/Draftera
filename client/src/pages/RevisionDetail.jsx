@@ -12,6 +12,7 @@ import RecipientStatusTable from "../components/revisions/RecipientStatusTable.j
 import { Alert, Loading } from "../components/ui/Feedback.jsx";
 import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
 import TitleBlock from "../components/revisions/TitleBlock.jsx";
+import Transmittal from "../components/revisions/Transmittal.jsx";
 
 function RevisionDetail() {
   const { revisionId } = useParams();
@@ -82,6 +83,11 @@ function RevisionDetail() {
           <h1 className="mono">{drawing.drawingNumber} Rev {revision.revisionNumber}</h1>
         </div>
         <div className="page-header-actions">
+          {access.isSupervisor && revision.status !== "draft" && (
+            <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
+              Print issue record
+            </button>
+          )}
           <button type="button" className="btn btn-secondary" onClick={handleOpenDrawing} disabled={opening}>
             {opening ? "Opening…" : "View drawing (PDF)"}
           </button>
@@ -160,6 +166,16 @@ function RevisionDetail() {
           <ActivityTimeline items={activity} />
         </section>
       </div>
+
+      {access.isSupervisor && revision.status !== "draft" && (
+        <Transmittal
+          revision={revision}
+          project={project}
+          drawing={drawing}
+          acknowledgments={acknowledgments}
+          history={history}
+        />
+      )}
     </>
   );
 }

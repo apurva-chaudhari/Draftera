@@ -117,9 +117,14 @@ function Register() {
               onChange={(event) => setRole(event.target.value)}
               disabled={isSubmitting}
             >
-              <option value="site_engineer">Site engineer / supervisor</option>
+              <option value="site_engineer">Site engineer or project lead</option>
               <option value="subcontractor">Subcontractor</option>
             </select>
+            <p className="auth-hint">
+              {role === "subcontractor"
+                ? "You receive the drawings a supervisor issues to you and confirm them. You are invited onto projects."
+                : "You can start projects and supervise them, and be added to other people's projects as a team member."}
+            </p>
 
             <label htmlFor="register-password">Password</label>
             <input

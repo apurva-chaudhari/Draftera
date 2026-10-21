@@ -121,7 +121,92 @@ function makeNotifier({ mailer = defaultMailer, loadUsers, env = process.env } =
     );
   }
 
-  return { notifyRevisionPublished, notifyReminder, notifyAddedToProject, notifyRemovedFromProject };
+  /** Tell the team when the supervisor changes the project's status. Never throws. */
+  async function notifyProjectStatusChanged({ project, from, to, memberIds, actor }) {
+    try {
+      const users = await loadUsers(memberIds);
+      const results = await Promise.all(
+        users
+          .filter((u) => String(u._id) !== String(actor._id))
+          .map((user) =>
+            deliver(
+              user,
+              templates.projectStatusChanged({
+                recipientName: user.name,
+                projectCode: project.code,
+                projectName: project.name,
+                from,
+                to,
+                changedBy: actor.name,
+                link: `${base()}/projects/${project._id}`,
+              })
+            )
+          )
+      );
+      return { attempted: results.length, sent: results.filter((r) => r.sent).length };
+    } catch (error) {
+      console.error("Notification failed:", error.message);
+      return { attempted: 0, sent: 0 };
+    }
+  }
+
+  /** Tell the supervisor a question is waiting. Never throws. */
+  async function notifyClarificationRequested({ project, revision, drawingNumber, question, actor }) {
+    try {
+      const [supervisor] = await loadUsers([project.supervisor]);
+      if (!supervisor || String(supervisor._id) === String(actor._id)) return { sent: false, reason: "self" };
+
+      return await deliver(
+        supervisor,
+        templates.clarificationRequested({
+          supervisorName: supervisor.name,
+          projectCode: project.code,
+          drawingNumber,
+          revisionNumber: revision.revisionNumber,
+          askedBy: actor.name,
+          question,
+          link: `${base()}/revisions/${revision._id}`,
+        })
+      );
+    } catch (error) {
+      console.error("Notification failed:", error.message);
+      return { sent: false, reason: "error" };
+    }
+  }
+
+  /** Tell the person who asked that their question was answered. Never throws. */
+  async function notifyClarificationAnswered({ project, revision, drawingNumber, askerId, response, actor }) {
+    try {
+      const [asker] = await loadUsers([askerId]);
+      if (!asker || String(asker._id) === String(actor._id)) return { sent: false, reason: "self" };
+
+      return await deliver(
+        asker,
+        templates.clarificationAnswered({
+          recipientName: asker.name,
+          projectCode: project.code,
+          drawingNumber,
+          revisionNumber: revision.revisionNumber,
+          answeredBy: actor.name,
+          response,
+          link: `${base()}/revisions/${revision._id}`,
+        })
+      );
+    } catch (error) {
+      console.error("Notification failed:", error.message);
+      return { sent: false, reason: "error" };
+    }
+  }
+
+  return {
+    notifyRevisionPublished,
+    notifyReminder,
+    notifyAddedToProject,
+    notifyRemovedFromProject,
+    notifyProjectStatusChanged,
+    notifyClarificationRequested,
+    notifyClarificationAnswered,
+  };
 }
 
 // Production instance. The model is required lazily so this file stays
