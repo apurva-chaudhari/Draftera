@@ -26,10 +26,14 @@ A `.env` file contains the database password, JWT secret and Supabase service-ro
 | Data loss | Verified, optionally encrypted backups with a tested restore (`docs/backup-restore.md`) |
 | Spreadsheet formula injection | CSV cells beginning with `= + - @` are neutralised |
 | Deactivated users | Account status checked on every request |
+| Misconfigured deployment | Startup check refuses to run without required settings, a 32+ character JWT secret and a real `CLIENT_URL` in production |
+| Demo accounts in production | `npm run seed` is blocked when `NODE_ENV=production`; no demo shortcuts in the UI |
+| AI assistant abuse and cost | Same access rules as opening the revision (members only; subcontractors only what was issued; drafts supervisor-only), 3 to 500 character questions, 10 questions per minute per person, the drawing text is treated as data by the system prompt |
 | Lost audit data | Publish writes its audit entry inside the same transaction |
 
 ## Known gaps (documented, not hidden)
 
+- **AI assistant data flow:** when someone asks a question, the revision's PDF and the question are sent to Google's Gemini API. Check Google's current terms for your key type: free-tier content may be used to improve Google's products, which a paid key avoids. Do not enable the assistant for confidential drawings without a suitable key and the project owner's agreement. AI answers can be wrong and are never receipt evidence.
 - Sessions are stateless: signing out clears the cookie, but a copied token stays valid until it expires (8 hours) unless the account is deactivated. A server-side session list would allow instant revocation.
 - Because the cookie is cross-site (Render + Vercel), some browsers that block third-party cookies (e.g. Safari) may refuse it. Serving the API from a subdomain of the web app's domain, with `COOKIE_SAMESITE=lax`, avoids this.
 - The rate limiter is in memory and per instance; use a shared store (e.g. Redis) when scaling out.

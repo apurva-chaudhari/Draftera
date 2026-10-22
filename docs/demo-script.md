@@ -1,6 +1,6 @@
 # Demo Script (about 5 minutes)
 
-Run `npm run seed` in `server/` first. All demo passwords: `Draftera#2026`.
+Run `npm run seed` in `server/` first, against a **local or throwaway database only** (it is blocked in production). The sign-in page has no demo buttons: type the email and the shared password `Draftera#2026`.
 
 1. **The problem, live.** Sign in as `supervisor@draftera.demo`. Overview shows a red card: people possibly on an old revision.
 2. Open the project **DEMO-TOWER → Revision currency**. STR-101 is at Rev B. Imran (steel) acknowledged Rev A but has not opened Rev B, flagged *"May still be working from it"*. Priya (electrical) is **Not issued** on ARC-204. *(Optional: in a private window sign in as `electrical@draftera.demo`. ARC-204 is not in her list at all: subcontractors only see what was issued to them.)* Click **Issue to them**, and ARC-204 now appears for her.
