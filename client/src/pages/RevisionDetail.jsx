@@ -13,8 +13,11 @@ import { Alert, Loading } from "../components/ui/Feedback.jsx";
 import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
 import TitleBlock from "../components/revisions/TitleBlock.jsx";
 import Transmittal from "../components/revisions/Transmittal.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
+import DrawingAssistant from "../components/revisions/DrawingAssistant.jsx";
 
 function RevisionDetail() {
+  const { t } = useI18n();
   const { revisionId } = useParams();
   const { user } = useAuth();
 
@@ -64,7 +67,7 @@ function RevisionDetail() {
   }
 
   if (error) return <Alert kind="error" onRetry={load}>{error}</Alert>;
-  if (!data) return <Loading label="Loading revision…" />;
+  if (!data) return <Loading label={t("revision.loading")} />;
 
   const { revision, project, access, myAcknowledgment, acknowledgments, clarifications, activity, supersededBy, members, history } = data;
   const drawing = revision.drawing;
@@ -73,50 +76,50 @@ function RevisionDetail() {
   return (
     <>
       <div className="breadcrumb">
-        <Link to="/projects">Projects</Link> /{" "}
+        <Link to="/projects">{t("nav.projects")}</Link> /{" "}
         <Link to={`/projects/${project._id}`}>{project.code}</Link> /{" "}
         <span>{drawing.drawingNumber}</span>
       </div>
 
       <header className="page-header">
         <div>
-          <h1 className="mono">{drawing.drawingNumber} Rev {revision.revisionNumber}</h1>
+          <h1 className="mono">{drawing.drawingNumber} {t("common.rev")} {revision.revisionNumber}</h1>
         </div>
         <div className="page-header-actions">
           {access.isSupervisor && revision.status !== "draft" && (
             <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
-              Print issue record
+              {t("revision.print")}
             </button>
           )}
           <button type="button" className="btn btn-secondary" onClick={handleOpenDrawing} disabled={opening}>
-            {opening ? "Opening…" : "View drawing (PDF)"}
+            {opening ? t("revision.opening") : t("revision.viewPdf")}
           </button>
         </div>
       </header>
 
       <TitleBlock revision={revision} project={project} drawing={drawing} />
-
+      <DrawingAssistant revisionId={revision._id} />
       {fileError && <Alert kind="error">{fileError}</Alert>}
 
       {isSuperseded && (
         <Alert kind="warning">
           <span>
-            <strong>Superseded. Do not build from this revision.</strong>{" "}
+            <strong>{t("revision.supersededWarning")}</strong>{" "}
             {supersededBy && (
-              <>The current revision is <Link to={`/revisions/${supersededBy._id}`}>Rev {supersededBy.revisionNumber}</Link>.</>
+              <>{t("revision.currentIs")} <Link to={`/revisions/${supersededBy._id}`}>{t("common.rev")} {supersededBy.revisionNumber}</Link>.</>
             )}
           </span>
         </Alert>
       )}
 
       {revision.status === "draft" && (
-        <Alert kind="info">This revision is a draft. Only you can see it until you publish it.</Alert>
+        <Alert kind="info">{t("revision.draftNotice")}</Alert>
       )}
 
       <div className="stack">
         <section className="card">
           <div className="card-header">
-            <h2>What changed</h2>
+            <h2>{t("revision.whatChanged")}</h2>
           </div>
           <div className="card-body" style={{ whiteSpace: "pre-wrap", lineHeight: 1.65, fontSize: 14.5 }}>
             {revision.changeSummary}
@@ -161,7 +164,7 @@ function RevisionDetail() {
 
         <section className="card">
           <div className="card-header">
-            <h2>Activity on this revision</h2>
+            <h2>{t("revision.activity")}</h2>
           </div>
           <ActivityTimeline items={activity} />
         </section>

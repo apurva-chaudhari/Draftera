@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { RevisionStatus } from "../ui/Badge.jsx";
 import RevChip from "../ui/RevChip.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { formatDate } from "../../utils/format.js";
 
 /**
@@ -9,12 +10,14 @@ import { formatDate } from "../../utils/format.js";
  * revision changed.
  */
 function RevisionHistory({ history, currentId }) {
+  const { t } = useI18n();
+
   return (
     <section className="card">
       <div className="card-header">
         <div>
-          <h2>Revision history ({history.length})</h2>
-          <p>What changed in each revision of this drawing.</p>
+          <h2>{t("history.title", { count: history.length })}</h2>
+          <p>{t("history.desc")}</p>
         </div>
       </div>
 
@@ -28,7 +31,7 @@ function RevisionHistory({ history, currentId }) {
               <p>{item.changeSummary}</p>
             </div>
             <span className="due-text">
-              {item.publishedAt ? formatDate(item.publishedAt) : "Draft"}
+              {item.publishedAt ? formatDate(item.publishedAt) : t("revision.draft")}
             </span>
           </>
         );

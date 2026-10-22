@@ -2,8 +2,10 @@ import { useState } from "react";
 import projectService from "../../services/projectService.js";
 import { roleLabel, initials, formatDate } from "../../utils/format.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 function TeamPanel({ project, isSupervisor, onChanged }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("subcontractor");
   const [saving, setSaving] = useState(false);
@@ -11,9 +13,7 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
   const [removingId, setRemovingId] = useState(null);
 
   async function handleRemove(member) {
-    const ok = window.confirm(
-      `Remove ${member.user.name} from this project?\n\nThey lose access straight away. Their past acknowledgments and questions stay in the project record.`
-    );
+    const ok = window.confirm(t("team.removeConfirm", { name: member.user.name }));
     if (!ok) return;
 
     setMessage(null);
@@ -53,28 +53,28 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
         <form className="card" onSubmit={handleAdd}>
           <div className="card-header">
             <div>
-              <h2>Add a team member</h2>
-              <p>They need a Draftera account first. Only people on this list can be chosen as revision recipients.</p>
+              <h2>{t("team.add")}</h2>
+              <p>{t("team.add.desc")}</p>
             </div>
           </div>
           <div className="card-body">
             {message && <Alert kind={message.kind}>{message.text}</Alert>}
             <div className="form-grid">
               <label className="field">
-                Email address
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" required disabled={saving} />
+                {t("team.email")}
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("team.emailPlaceholder")} required disabled={saving} />
               </label>
               <label className="field">
-                Role on this project
+                {t("team.role")}
                 <select value={role} onChange={(e) => setRole(e.target.value)} disabled={saving}>
-                  <option value="subcontractor">Subcontractor</option>
-                  <option value="site_engineer">Site engineer</option>
+                  <option value="subcontractor">{t("role.subcontractor")}</option>
+                  <option value="site_engineer">{t("role.site_engineer")}</option>
                 </select>
               </label>
             </div>
             <div className="form-actions">
               <button className="btn btn-primary" type="submit" disabled={saving}>
-                {saving ? "Adding…" : "Add to project"}
+                {saving ? t("team.adding") : t("team.addButton")}
               </button>
             </div>
           </div>
@@ -83,7 +83,7 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
 
       <div className="card">
         <div className="card-header">
-          <h2>Project team ({project.members.length})</h2>
+          <h2>{t("team.title", { count: project.members.length })}</h2>
         </div>
         {!isSupervisor && message && <Alert kind={message.kind}>{message.text}</Alert>}
         {project.members.map((member) => (
@@ -98,7 +98,7 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ textAlign: "right" }}>
                 <span className="cell-title">{roleLabel(member.role)}</span>
-                <span className="cell-sub">Added {formatDate(member.addedAt)}</span>
+                <span className="cell-sub">{t("team.added", { date: formatDate(member.addedAt) })}</span>
               </div>
               {isSupervisor && member.role !== "project_supervisor" && (
                 <button
@@ -106,9 +106,9 @@ function TeamPanel({ project, isSupervisor, onChanged }) {
                   type="button"
                   onClick={() => handleRemove(member)}
                   disabled={removingId === member.user._id}
-                  aria-label={`Remove ${member.user.name} from the project`}
+                  aria-label={t("team.removeLabel", { name: member.user.name })}
                 >
-                  {removingId === member.user._id ? "Removing…" : "Remove"}
+                  {removingId === member.user._id ? t("team.removing") : t("team.remove")}
                 </button>
               )}
             </div>

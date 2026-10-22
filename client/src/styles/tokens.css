@@ -4,7 +4,7 @@
  * and monospaced type for drawing numbers and revisions.
  */
 :root {
-  --font-sans: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "IBM Plex Sans", "Noto Sans Devanagari", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-bg: #f3f1ec;

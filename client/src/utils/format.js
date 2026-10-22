@@ -1,22 +1,28 @@
-const dateFormatter = new Intl.DateTimeFormat("en-IN", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
+import { getLocale, translate } from "../i18n/core.js";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
-  day: "numeric",
-  month: "short",
-  hour: "numeric",
-  minute: "2-digit",
-});
+// Intl formatters are cached per language so switching is cheap.
+const formatters = new Map();
+
+function formatter(kind, options) {
+  const locale = getLocale();
+  const cacheKey = `${kind}:${locale}`;
+
+  if (!formatters.has(cacheKey)) {
+    formatters.set(cacheKey, new Intl.DateTimeFormat(locale, options));
+  }
+
+  return formatters.get(cacheKey);
+}
+
+const DATE = { day: "numeric", month: "short", year: "numeric" };
+const DATE_TIME = { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" };
 
 export function formatDate(value) {
-  return value ? dateFormatter.format(new Date(value)) : "—";
+  return value ? formatter("date", DATE).format(new Date(value)) : "—";
 }
 
 export function formatDateTime(value) {
-  return value ? dateTimeFormatter.format(new Date(value)) : "—";
+  return value ? formatter("datetime", DATE_TIME).format(new Date(value)) : "—";
 }
 
 /** "3 days ago", "just now": used where recency matters more than a date. */
@@ -25,23 +31,18 @@ export function timeAgo(value) {
 
   const seconds = Math.round((Date.now() - new Date(value).getTime()) / 1000);
 
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
-  if (seconds < 86400 * 30) return `${Math.floor(seconds / 86400)} d ago`;
+  if (seconds < 60) return translate("time.justNow");
+  if (seconds < 3600) return translate("time.minAgo", { n: Math.floor(seconds / 60) });
+  if (seconds < 86400) return translate("time.hourAgo", { n: Math.floor(seconds / 3600) });
+  if (seconds < 86400 * 30) return translate("time.dayAgo", { n: Math.floor(seconds / 86400) });
 
   return formatDate(value);
 }
 
-const ROLE_LABELS = {
-  admin: "Administrator",
-  project_supervisor: "Project supervisor",
-  site_engineer: "Site engineer",
-  subcontractor: "Subcontractor",
-};
+const ROLES = ["admin", "project_supervisor", "site_engineer", "subcontractor"];
 
 export function roleLabel(role) {
-  return ROLE_LABELS[role] || "Team member";
+  return translate(ROLES.includes(role) ? `role.${role}` : "role.member");
 }
 
 export function initials(name = "") {
@@ -57,9 +58,9 @@ export function initials(name = "") {
 
 export function greeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return translate("greeting.morning");
+  if (hour < 17) return translate("greeting.afternoon");
+  return translate("greeting.evening");
 }
 
 /** True when a deadline exists and has passed. */
@@ -69,36 +70,28 @@ export function isOverdue(dueAt, now = Date.now()) {
 
 /** "Due 3 Nov, 5:30 pm" or "Overdue since 3 Nov". */
 export function dueLabel(dueAt, now = Date.now()) {
-  if (!dueAt) return "No deadline";
+  if (!dueAt) return translate("time.noDeadline");
+
+  const when = formatter("datetime", DATE_TIME).format(new Date(dueAt));
+
   return isOverdue(dueAt, now)
-    ? `Overdue since ${dateTimeFormatter.format(new Date(dueAt))}`
-    : `Due ${dateTimeFormatter.format(new Date(dueAt))}`;
+    ? translate("time.overdueSince", { date: when })
+    : translate("time.due", { date: when });
 }
 
-/** What each project status means, in words the whole team can read. */
-export const PROJECT_STATUS_OPTIONS = [
-  {
-    value: "active",
-    label: "Active",
-    effect: "Normal work. Drawings can be uploaded, issued, acknowledged and discussed.",
-  },
-  {
-    value: "on_hold",
-    label: "On hold",
-    effect:
-      "Paused. Nothing new can be issued, but the team can still acknowledge and ask questions about what they already hold.",
-  },
-  {
-    value: "completed",
-    label: "Completed",
-    effect: "Finished. Everything becomes read-only; drawings and history stay available.",
-  },
-  {
-    value: "archived",
-    label: "Archived",
-    effect: "Closed and moved out of the way. Read-only, and hidden from the default project list.",
-  },
-];
+const PROJECT_STATUSES = ["active", "on_hold", "completed", "archived"];
+
+/**
+ * What each project status means, in words the whole team can read.
+ * Built on each call so the labels follow the current language.
+ */
+export function projectStatusOptions() {
+  return PROJECT_STATUSES.map((value) => ({
+    value,
+    label: translate(`projectStatus.${value}`),
+    effect: translate(`projectStatus.${value}.effect`),
+  }));
+}
 
 /** Projects with live work: these show up in tasks, risks and the overview. */
 export function isOpenProject(status) {
@@ -107,8 +100,8 @@ export function isOpenProject(status) {
 
 /** The banner shown on a project that is not Active, or null when none is needed. */
 export function statusNotice(status) {
-  if (status === "on_hold") return "This project is on hold. Nothing new can be issued until it is set back to Active.";
-  if (status === "completed") return "This project is completed and read-only.";
-  if (status === "archived") return "This project is archived and read-only.";
+  if (status === "on_hold") return translate("notice.onHold");
+  if (status === "completed") return translate("notice.completed");
+  if (status === "archived") return translate("notice.archived");
   return null;
 }

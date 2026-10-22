@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { formatDateTime } from "../../utils/format.js";
 
 const TONES = {
@@ -12,9 +13,11 @@ const TONES = {
 };
 
 /** Chronological list of recorded actions (newest first). */
-function ActivityTimeline({ items, emptyText = "No activity recorded yet." }) {
+function ActivityTimeline({ items, emptyText }) {
+  const { t } = useI18n();
+
   if (!items || items.length === 0) {
-    return <p style={{ padding: 22, color: "var(--color-text-muted)", fontSize: 13.5 }}>{emptyText}</p>;
+    return <p style={{ padding: 22, color: "var(--color-text-muted)", fontSize: 13.5 }}>{emptyText || t("activity.empty")}</p>;
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import drawingService from "../../services/drawingService.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -10,6 +11,7 @@ const today = () => new Date().toISOString().slice(0, 10);
  * publishes it and chooses recipients.
  */
 function UploadRevisionForm({ projectId, existingDrawings = [], onUploaded, onCancel }) {
+  const { t } = useI18n();
   const [drawingNumber, setDrawingNumber] = useState("");
   const [title, setTitle] = useState("");
   const [revisionNumber, setRevisionNumber] = useState("A");
@@ -32,9 +34,9 @@ function UploadRevisionForm({ projectId, existingDrawings = [], onUploaded, onCa
     event.preventDefault();
     setError("");
 
-    if (!file) return setError("Choose a PDF drawing to upload.");
-    if (file.type !== "application/pdf") return setError("Only PDF files are allowed.");
-    if (file.size > MAX_BYTES) return setError("The PDF must be 10 MB or smaller.");
+    if (!file) return setError(t("upload.err.noFile"));
+    if (file.type !== "application/pdf") return setError(t("upload.err.notPdf"));
+    if (file.size > MAX_BYTES) return setError(t("upload.err.tooBig"));
 
     const formData = new FormData();
     formData.append("projectId", projectId);
@@ -61,8 +63,8 @@ function UploadRevisionForm({ projectId, existingDrawings = [], onUploaded, onCa
     <form className="card" onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
       <div className="card-header">
         <div>
-          <h2>Upload drawing revision</h2>
-          <p>Saved as a draft. You choose who receives it when you publish.</p>
+          <h2>{t("upload.title")}</h2>
+          <p>{t("upload.desc")}</p>
         </div>
       </div>
 
@@ -71,49 +73,49 @@ function UploadRevisionForm({ projectId, existingDrawings = [], onUploaded, onCa
 
         <div className="form-grid">
           <label className="field">
-            Drawing number
+            {t("upload.number")}
             <input list="existing-drawings" value={drawingNumber} onChange={(e) => handleDrawingNumber(e.target.value)} placeholder="STR-101" maxLength={100} required disabled={saving} />
             <datalist id="existing-drawings">
               {existingDrawings.map((drawing) => (
                 <option key={drawing._id} value={drawing.drawingNumber}>{drawing.title}</option>
               ))}
             </datalist>
-            <small>Pick an existing number to add a new revision to that drawing.</small>
+            <small>{t("upload.numberHint")}</small>
           </label>
 
           <label className="field">
-            Drawing title
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Level 3 slab reinforcement" minLength={2} maxLength={200} required disabled={saving} />
+            {t("tb.title")}
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("upload.titlePlaceholder")} minLength={2} maxLength={200} required disabled={saving} />
           </label>
 
           <label className="field">
-            Revision
-            <input value={revisionNumber} onChange={(e) => setRevisionNumber(e.target.value)} placeholder="A, B, C…" maxLength={30} required disabled={saving} />
+            {t("tb.revision")}
+            <input value={revisionNumber} onChange={(e) => setRevisionNumber(e.target.value)} placeholder={t("upload.revisionPlaceholder")} maxLength={30} required disabled={saving} />
           </label>
 
           <label className="field">
-            Issue date
+            {t("tb.issueDate")}
             <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} required disabled={saving} />
           </label>
 
           <label className="field full">
-            What changed in this revision?
-            <textarea rows={3} value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} placeholder="e.g. Bar spacing reduced to 100 mm c/c near the lift core. Do not use Rev A." minLength={3} maxLength={5000} required disabled={saving} />
-            <small>Recipients read this first. Say what changed and what to stop doing.</small>
+            {t("upload.changed")}
+            <textarea rows={3} value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} placeholder={t("upload.changedPlaceholder")} minLength={3} maxLength={5000} required disabled={saving} />
+            <small>{t("upload.changedHint")}</small>
           </label>
 
           <label className="field full">
-            Drawing file (PDF, max 10 MB)
+            {t("upload.file")}
             <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} required disabled={saving} />
           </label>
         </div>
 
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Uploading…" : "Save as draft"}
+            {saving ? t("upload.uploading") : t("upload.save")}
           </button>
           <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>

@@ -143,6 +143,7 @@ person's opened and acknowledged times.
 - PDF only, 10 MB limit; no markup, comparison or CAD formats.
 - Removing a team member keeps their past acknowledgments, questions and audit entries on purpose: they are the record of who was told what.
 - Backups are manual; see `backup-restore.md`.
+- The AI assistant sends the drawing PDF to Google, can be wrong, and depends on a Gemini model that Google may retire (change `GEMINI_MODEL`). Its answers are not evidence of receipt and do not count as opening the drawing.
 - Acknowledgment is not a legal sign-off and Draftera does not replace a formal document-control procedure.
 - Automated tests cover the revision-currency logic, report, deadlines and access rules. An end-to-end workflow suite exists (`server/tests/workflow.integration.test.js`) and runs against a real test database in CI; it has not been run in every environment, so run it locally before relying on it.
 - Component rendering was checked with a render harness, not a real browser. Test each page on a phone, tablet and laptop (see `docs/testing.md`).

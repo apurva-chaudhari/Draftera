@@ -5,9 +5,11 @@ import workflowService from "../services/workflowService.js";
 import { ClarificationStatus } from "../components/ui/Badge.jsx";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
 import RevChip from "../components/ui/RevChip.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
 import { formatDateTime } from "../utils/format.js";
 
 function Clarifications() {
+  const { t } = useI18n();
   const { data: items, error, reload } = useResource("my-clarifications", async () =>
     (await workflowService.listMyClarifications()).clarifications
   );
@@ -21,22 +23,22 @@ function Clarifications() {
   return (
     <>
       <PageHeader
-        title="Clarifications"
-        description="Questions about drawing revisions. Supervisors see every question in their projects; everyone else sees the ones they asked."
+        title={t("nav.clarifications")}
+        description={t("clar.page.desc")}
       />
 
       <div className="toolbar">
-        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
-          <option value="all">All statuses</option>
-          <option value="open">Open</option>
-          <option value="answered">Answered</option>
-          <option value="resolved">Resolved</option>
+        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} aria-label={t("common.filterStatus")}>
+          <option value="all">{t("common.allStatuses")}</option>
+          <option value="open">{t("clarification.open")}</option>
+          <option value="answered">{t("clarification.answered")}</option>
+          <option value="resolved">{t("clarification.resolved")}</option>
         </select>
       </div>
 
       <div className="card">
         {visible.length === 0 ? (
-          <EmptyState title="No clarifications">Questions raised on a revision will appear here.</EmptyState>
+          <EmptyState title={t("clar.page.empty")}>{t("clar.page.empty.body")}</EmptyState>
         ) : (
           visible.map((item) => (
             <Link className="list-item" to={`/revisions/${item.revision._id}`} key={item._id}>

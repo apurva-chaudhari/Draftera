@@ -1,3 +1,5 @@
+import { translate } from "../i18n/core.js";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
@@ -24,9 +26,7 @@ async function apiRequest(endpoint, options = {}) {
       },
     });
   } catch {
-    throw new Error(
-      "Cannot reach the server. Check your connection and try again."
-    );
+    throw new Error(translate("api.unreachable"));
   }
 
   const data = await response.json().catch(() => ({}));
@@ -38,7 +38,7 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.message || "Something went wrong. Please try again.");
+    throw new Error(data.message || translate("api.generic"));
   }
 
   return data;
@@ -56,12 +56,12 @@ async function apiDownload(endpoint, fallbackName) {
       credentials: "include",
     });
   } catch {
-    throw new Error("Cannot reach the server. Check your connection and try again.");
+    throw new Error(translate("api.unreachable"));
   }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || "The file could not be downloaded.");
+    throw new Error(data.message || translate("api.downloadFailed"));
   }
 
   const disposition = response.headers.get("Content-Disposition") || "";

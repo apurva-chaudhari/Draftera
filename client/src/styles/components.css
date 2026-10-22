@@ -1129,3 +1129,63 @@ a.history-item:hover {
 .stat-card.attention {
   border-top-color: var(--color-accent-bright);
 }
+
+/* ---- language switcher ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.lang-switcher-label {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.lang-switcher select {
+  min-height: 44px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lang-switcher select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.lang-switcher-sidebar {
+  display: flex;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.lang-switcher-sidebar select {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang-switcher-auth {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}

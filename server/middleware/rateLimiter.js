@@ -1,11 +1,12 @@
 /**
- * Minimal in-memory rate limiter (fixed window, per client IP).
+ * Minimal in-memory rate limiter (fixed window, per client IP by default;
+ * pass `key(req)` to count per something else, e.g. per signed-in user).
  *
  * Good enough to blunt password guessing on a single server instance. If the
  * API is ever scaled across several instances, replace this with a shared
  * store such as Redis.
  */
-function rateLimiter({ windowMs, max, message }) {
+function rateLimiter({ windowMs, max, message, key: keyOf }) {
   const hits = new Map();
 
   // Drop expired entries so the map cannot grow without bound.
@@ -18,7 +19,7 @@ function rateLimiter({ windowMs, max, message }) {
 
   return (req, res, next) => {
     const now = Date.now();
-    const key = req.ip;
+    const key = (keyOf && keyOf(req)) || req.ip;
     const entry = hits.get(key);
 
     if (!entry || entry.resetAt <= now) {

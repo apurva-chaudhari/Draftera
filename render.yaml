@@ -2,11 +2,14 @@ services:
   - type: web
     name: draftera-api
     runtime: node
+    plan: free
     rootDir: server
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
@@ -17,11 +20,19 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      # Your web app address, https, no trailing slash (comma separated for several).
       - key: CLIENT_URL
         sync: false
       - key: APP_URL
         sync: false
+      # Leave empty to switch email off.
       - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false
+      # Leave empty to switch the AI drawing assistant off.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Google retires models on a schedule; change this value if answers fail with 404 in the logs.
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite

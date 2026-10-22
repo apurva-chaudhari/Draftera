@@ -1,14 +1,16 @@
 import { useState } from "react";
 import drawingService from "../../services/drawingService.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { roleLabel } from "../../utils/format.js";
 
+// `label` is a translation key.
 const DEADLINES = [
-  { value: "", label: "No deadline" },
-  { value: "24", label: "Within 24 hours" },
-  { value: "48", label: "Within 48 hours" },
-  { value: "72", label: "Within 3 days" },
-  { value: "168", label: "Within 7 days" },
+  { value: "", label: "time.noDeadline" },
+  { value: "24", label: "publish.within24h" },
+  { value: "48", label: "publish.within48h" },
+  { value: "72", label: "publish.within3d" },
+  { value: "168", label: "publish.within7d" },
 ];
 
 /**
@@ -17,6 +19,7 @@ const DEADLINES = [
  * people to act), so it needs a second, explicit confirmation.
  */
 function PublishPanel({ revision, members, currentUserId, supersedes, onPublished }) {
+  const { t } = useI18n();
   // The supervisor issues the drawing; they are not part of the audience.
   const audience = members.filter((member) => member.user._id !== currentUserId);
 
@@ -61,8 +64,8 @@ function PublishPanel({ revision, members, currentUserId, supersedes, onPublishe
     <div className="card flagged">
       <div className="card-header">
         <div>
-          <h2>Publish this revision</h2>
-          <p>Choose who must receive it. Anyone left unticked will not be told about it.</p>
+          <h2>{t("publish.title")}</h2>
+          <p>{t("publish.desc")}</p>
         </div>
       </div>
 
@@ -71,7 +74,7 @@ function PublishPanel({ revision, members, currentUserId, supersedes, onPublishe
 
         {audience.length === 0 ? (
           <Alert kind="warning">
-            Add site engineers or subcontractors to the project team before publishing.
+            {t("publish.noAudience")}
           </Alert>
         ) : (
           <div className="checklist">
@@ -88,25 +91,25 @@ function PublishPanel({ revision, members, currentUserId, supersedes, onPublishe
         )}
 
         <label className="field" style={{ maxWidth: 280, marginBottom: 16 }}>
-          Acknowledge by
+          {t("tb.ackBy")}
           <select value={deadline} onChange={(e) => { setDeadline(e.target.value); setConfirming(false); }} disabled={saving}>
             {DEADLINES.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>{t(option.label)}</option>
             ))}
           </select>
-          <small>People still pending after this are marked overdue.</small>
+          <small>{t("publish.deadlineHint")}</small>
         </label>
 
         {confirming && (
           <div className="confirm-box" role="alert">
-            <strong>Please confirm.</strong>
+            <strong>{t("publish.confirm")}</strong>
             <ul>
-              <li>Rev {revision.revisionNumber} will be sent to {selected.size} {selected.size === 1 ? "person" : "people"}.</li>
+              <li>{t("publish.willSend", { rev: revision.revisionNumber, count: selected.size })}</li>
               {supersedes && (
-                <li>Rev {supersedes.revisionNumber} will become <strong>superseded</strong>; its confirmations will not carry over.</li>
+                <li>{t("publish.willSupersede", { rev: supersedes.revisionNumber })}</li>
               )}
               {omitted.length > 0 && (
-                <li>Not sent to: {omitted.map((m) => m.user.name).join(", ")}.</li>
+                <li>{t("publish.notSentTo", { names: omitted.map((m) => m.user.name).join(", ") })}</li>
               )}
             </ul>
           </div>
@@ -116,15 +119,15 @@ function PublishPanel({ revision, members, currentUserId, supersedes, onPublishe
           {confirming ? (
             <>
               <button type="button" className="btn btn-accent" onClick={handlePublish} disabled={saving}>
-                {saving ? "Publishing…" : "Yes, publish now"}
+                {saving ? t("publish.publishing") : t("publish.yes")}
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setConfirming(false)} disabled={saving}>
-                Go back
+                {t("publish.goBack")}
               </button>
             </>
           ) : (
             <button type="button" className="btn btn-accent" onClick={() => setConfirming(true)} disabled={selected.size === 0}>
-              Review and publish
+              {t("publish.review")}
             </button>
           )}
         </div>

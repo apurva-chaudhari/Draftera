@@ -6,9 +6,11 @@ import projectService from "../services/projectService.js";
 import CreateProjectForm from "../components/projects/CreateProjectForm.jsx";
 import { ProjectStatus } from "../components/ui/Badge.jsx";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
 import { isOpenProject, roleLabel } from "../utils/format.js";
 
 function Projects() {
+  const { t } = useI18n();
   const { user } = useAuth();
   // Subcontractors are invited onto projects; they do not start them.
   const canCreate = user.role !== "subcontractor";
@@ -38,12 +40,12 @@ function Projects() {
   return (
     <>
       <PageHeader
-        title="Projects"
-        description="Every project you supervise or work on. Your role can differ from one project to the next."
+        title={t("nav.projects")}
+        description={t("projects.desc")}
         actions={
           canCreate && !showForm && (
             <button type="button" className="btn btn-primary" onClick={() => setShowForm(true)}>
-              New project
+              {t("projects.new")}
             </button>
           )
         }
@@ -62,29 +64,29 @@ function Projects() {
       {error && <Alert kind="error" onRetry={reload}>{error}</Alert>}
 
       <div className="toolbar">
-        <input className="input" type="search" placeholder="Search by name or code…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search projects" />
-        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
-          <option value="open">Active and on hold</option>
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="on_hold">On hold</option>
-          <option value="completed">Completed</option>
-          <option value="archived">Archived</option>
+        <input className="input" type="search" placeholder={t("projects.searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("projects.searchLabel")} />
+        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} aria-label={t("common.filterStatus")}>
+          <option value="open">{t("projects.filter.open")}</option>
+          <option value="all">{t("common.allStatuses")}</option>
+          <option value="active">{t("projectStatus.active")}</option>
+          <option value="on_hold">{t("projectStatus.on_hold")}</option>
+          <option value="completed">{t("projectStatus.completed")}</option>
+          <option value="archived">{t("projectStatus.archived")}</option>
         </select>
       </div>
 
       {loading ? (
-        <Loading label="Loading projects…" />
+        <Loading label={t("projects.loading")} />
       ) : visible.length === 0 ? (
         <div className="card">
-          <EmptyState title={projects.length === 0 ? "No projects yet" : "No matching projects"}>
+          <EmptyState title={projects.length === 0 ? t("projects.empty.none") : t("projects.empty.noMatch")}>
             {projects.length === 0
               ? canCreate
-                ? "Create a project to start publishing drawing revisions to your team."
-                : "You will see projects here once a supervisor adds you to their team."
+                ? t("projects.empty.create")
+                : t("projects.empty.wait")
               : status === "open"
-                ? "Completed and archived projects are hidden here. Choose “All statuses” to see them."
-                : "Try a different search or status filter."}
+                ? t("projects.empty.hidden")
+                : t("projects.empty.tryOther")}
           </EmptyState>
         </div>
       ) : (
@@ -96,9 +98,9 @@ function Projects() {
                 <ProjectStatus status={project.status} />
               </div>
               <h3>{project.name}</h3>
-              <p>{project.description || "No description provided."}</p>
+              <p>{project.description || t("projects.noDescription")}</p>
               <div className="project-card-foot">
-                <span>{project.memberCount} team members</span>
+                <span>{t("projects.members", { count: project.memberCount })}</span>
                 <strong>{roleLabel(project.myRole)}</strong>
               </div>
             </Link>

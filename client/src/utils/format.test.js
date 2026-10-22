@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  PROJECT_STATUS_OPTIONS,
   dueLabel,
   greeting,
   initials,
   isOpenProject,
   isOverdue,
+  projectStatusOptions,
   roleLabel,
   statusNotice,
   timeAgo,
@@ -54,10 +54,10 @@ test("greeting returns a time-of-day greeting", () => {
 
 test("every project status is described and has a label", () => {
   assert.deepEqual(
-    PROJECT_STATUS_OPTIONS.map((o) => o.value),
+    projectStatusOptions().map((o) => o.value),
     ["active", "on_hold", "completed", "archived"]
   );
-  for (const option of PROJECT_STATUS_OPTIONS) {
+  for (const option of projectStatusOptions()) {
     assert.ok(option.label && option.effect.length > 20, option.value);
   }
 });

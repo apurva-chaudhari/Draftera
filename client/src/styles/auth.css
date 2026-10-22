@@ -197,42 +197,6 @@
   }
 }
 
-.demo-box {
-  margin-top: 22px;
-  padding: 14px 16px;
-  border: 1px dashed #c3d0e3;
-  border-radius: 10px;
-  background: #f7faff;
-}
-
-.demo-box p {
-  margin: 0 0 10px;
-  color: #65758b;
-  font-size: 12.5px;
-  font-weight: 650;
-}
-
-.demo-box div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.demo-box button {
-  padding: 6px 12px;
-  border: 1px solid #c3d0e3;
-  border-radius: 999px;
-  background: #fff;
-  color: #244d88;
-  font-size: 12.5px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.demo-box button:hover {
-  background: #eaf1fb;
-}
-
 .auth-form select {
   width: 100%;
   min-height: 46px;

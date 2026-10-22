@@ -5,6 +5,7 @@
 | Layer | Tool | What it proves | Needs |
 | --- | --- | --- | --- |
 | Pure logic | `node:test` | Revision currency, overdue rules, CSV report, access rules, rate limiter, formatting helpers | Nothing |
+| Config and AI assistant | `node:test`, fake fetch and storage | Startup config check, Gemini request and error handling, assistant access rules and input limits, per-person rate limit | Nothing |
 | API smoke | `node:test` | Auth required on every route, forged tokens rejected, CORS allow-list, privileged sign-up refused | Nothing |
 | Workflow (end to end) | `node:test` + real MongoDB, fake storage | The whole business flow, permissions, and edge cases below | `TEST_MONGODB_URI` |
 | Static checks | ESLint, Vite build | No unused/undefined code, bundle builds | Nothing |
@@ -101,6 +102,22 @@ Use a separate throwaway database, never the one holding your real data. CI runs
 | V3 | Roles | Activity feeds hide other people's opens, acknowledgments, reminders and draft uploads | hidden |
 | V4 | Roles | Overview reports `supervisedProjects`; the client shows risks only to supervisors | yes |
 | E1 | Email | Status change emails the team except the actor; question emails the supervisor; answer emails the asker | yes |
+
+## Configuration and AI assistant test cases
+
+| # | Area | Case | Expected |
+| --- | --- | --- | --- |
+| C1 | Config | Missing database, Supabase or JWT settings | Startup refused, each problem listed |
+| C2 | Config | Production with empty or localhost-only `CLIENT_URL` | Startup refused |
+| C3 | Config | Trailing slash / `http://` in `CLIENT_URL`, missing Gemini or Brevo keys | Warning only |
+| G1 | Assistant | Valid question | Answer returned; key sent in a header, never in the URL |
+| G2 | Assistant | Gemini 429 / 404 / 500, empty or blocked answer, file missing from storage | Friendly message with the right status; Gemini not called when the file is missing |
+| G3 | Assistant | Question shorter than 3 or longer than 500 characters | 400, nothing sent to Google |
+| G4 | Assistant | No `GEMINI_API_KEY` | 503 "not set up" |
+| G5 | Assistant | Outsider / subcontractor not issued the drawing / non-supervisor on a draft | 403 / 404 / 404 |
+| G6 | Assistant | Same office IP, two people | Each gets their own rate limit |
+| G7 | Assistant | No session | 401 |
+| S1 | Seed | `NODE_ENV=production` without `--allow-production` | Refused before touching the database |
 
 ## Manual test checklist (phone, tablet, laptop)
 

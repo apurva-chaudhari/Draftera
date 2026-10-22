@@ -4,8 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/authService.js";
 import BlueprintArt from "../components/ui/BlueprintArt.jsx";
 import Logo from "../components/ui/Logo.jsx";
+import LanguageSwitcher from "../i18n/LanguageSwitcher.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
 
 function Register() {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -24,17 +27,17 @@ function Register() {
     const trimmedEmail = email.trim();
 
     if (trimmedName.length < 2 || trimmedName.length > 100) {
-      setError("Name must be between 2 and 100 characters.");
+      setError(t("auth.err.name"));
       return;
     }
 
     if (password.length < 8 || password.length > 72) {
-      setError("Password must be between 8 and 72 characters.");
+      setError(t("auth.err.passwordLength"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("auth.err.passwordMatch"));
       return;
     }
 
@@ -52,7 +55,7 @@ function Register() {
       navigate("/", { replace: true });
     } catch (requestError) {
       setError(
-        requestError.message || "Unable to create your account. Please try again."
+        requestError.message || t("auth.registerFailed")
       );
     } finally {
       setIsSubmitting(false);
@@ -65,30 +68,31 @@ function Register() {
         <Logo size={48} />
         <p className="brand-name">Draftera</p>
         <p className="brand-description">
-          Every team aligned with the right drawing revision.
+          {t("auth.register.tagline")}
         </p>
         <div className="brand-note">
           <span className="brand-note-dot" />
-          Built for construction teams
+          {t("auth.builtFor")}
         </div>
         <BlueprintArt />
       </section>
 
       <section className="auth-form-panel">
         <div className="auth-form-wrapper">
-          <p className="auth-eyebrow">GET STARTED</p>
-          <h1>Create your account</h1>
+          <LanguageSwitcher className="lang-switcher-auth" />
+          <p className="auth-eyebrow">{t("auth.register.eyebrow")}</p>
+          <h1>{t("auth.register.title")}</h1>
           <p className="auth-subtitle">
-            Join your construction team and keep drawing revisions clear.
+            {t("auth.register.subtitle")}
           </p>
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            <label htmlFor="register-name">Full name</label>
+            <label htmlFor="register-name">{t("auth.fullName")}</label>
             <input
               id="register-name"
               type="text"
               autoComplete="name"
-              placeholder="Enter your full name"
+              placeholder={t("auth.fullNamePlaceholder")}
               value={name}
               onChange={(event) => setName(event.target.value)}
               required
@@ -97,12 +101,12 @@ function Register() {
               disabled={isSubmitting}
             />
 
-            <label htmlFor="register-email">Work email</label>
+            <label htmlFor="register-email">{t("auth.email")}</label>
             <input
               id="register-email"
               type="email"
               autoComplete="email"
-              placeholder="you@company.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -110,28 +114,28 @@ function Register() {
               disabled={isSubmitting}
             />
 
-            <label htmlFor="register-role">I work as a</label>
+            <label htmlFor="register-role">{t("auth.workAs")}</label>
             <select
               id="register-role"
               value={role}
               onChange={(event) => setRole(event.target.value)}
               disabled={isSubmitting}
             >
-              <option value="site_engineer">Site engineer or project lead</option>
-              <option value="subcontractor">Subcontractor</option>
+              <option value="site_engineer">{t("auth.role.siteEngineer")}</option>
+              <option value="subcontractor">{t("role.subcontractor")}</option>
             </select>
             <p className="auth-hint">
               {role === "subcontractor"
-                ? "You receive the drawings a supervisor issues to you and confirm them. You are invited onto projects."
-                : "You can start projects and supervise them, and be added to other people's projects as a team member."}
+                ? t("auth.hint.subcontractor")
+                : t("auth.hint.siteEngineer")}
             </p>
 
-            <label htmlFor="register-password">Password</label>
+            <label htmlFor="register-password">{t("auth.password")}</label>
             <input
               id="register-password"
               type="password"
               autoComplete="new-password"
-              placeholder="At least 8 characters"
+              placeholder={t("auth.passwordNew")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -140,12 +144,12 @@ function Register() {
               disabled={isSubmitting}
             />
 
-            <label htmlFor="confirm-password">Confirm password</label>
+            <label htmlFor="confirm-password">{t("auth.confirmPassword")}</label>
             <input
               id="confirm-password"
               type="password"
               autoComplete="new-password"
-              placeholder="Re-enter your password"
+              placeholder={t("auth.confirmPlaceholder")}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
@@ -163,15 +167,15 @@ function Register() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating account..." : "Create account"}
+              {isSubmitting ? t("auth.creating") : t("auth.createAccount")}
             </button>
           </form>
 
           <p className="auth-footer">
-            Already have an account? <Link to="/login">Sign in</Link>
+            {t("auth.haveAccount")} <Link to="/login">{t("auth.signIn")}</Link>
           </p>
           <p className="auth-footer">
-            Registration creates a site engineer account.
+            {t("auth.registerNote")}
           </p>
         </div>
       </section>
