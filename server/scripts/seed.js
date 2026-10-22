@@ -4,6 +4,10 @@
  *   npm run seed            create the demo project (refuses to run twice)
  *   npm run seed -- --reset delete the demo project first, then recreate it
  *
+ * The demo accounts share a password that is public in this repository, so the
+ * script refuses to run when NODE_ENV=production unless you add
+ * --allow-production. Never leave those accounts in a database real people use.
+ *
  * The story it sets up is exactly the problem in the assessment brief:
  *   - STR-101 Rev A was acknowledged by everyone.
  *   - Rev B then replaced it. Only the site engineer acknowledged Rev B.
@@ -75,6 +79,13 @@ async function removeProject(code) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && !process.argv.includes("--allow-production")) {
+    throw new Error(
+      "NODE_ENV is production. The demo accounts use a publicly known password, so seeding is blocked. " +
+        "Use a separate demo database, or add --allow-production if you really mean it."
+    );
+  }
+
   await connectDB();
 
   const existing = await Project.findOne({ code: PROJECT_CODE });
