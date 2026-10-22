@@ -13,6 +13,7 @@ const supabase = require("../config/storage");
 const { getProjectAccess } = require("../utils/projectAccess");
 const { logActivity } = require("../utils/activity");
 const notifications = require("../services/notifications");
+const { askAboutDrawing } = require("../services/drawingAssistant");
 
 const STORAGE_BUCKET = "drawing-revisions";
 
@@ -642,10 +643,59 @@ const addRecipients = async (req, res, next) => {
   }
 };
 
+/**
+ * Ask the AI assistant a question about one revision's PDF. Same access rules
+ * as opening the revision; asking never counts as opening it (no receipt
+ * evidence is recorded), because an AI summary is not the drawing.
+ */
+const askDrawingQuestion = async (req, res, next) => {
+  try {
+    const loaded = await loadRevisionForUser(req, res);
+    if (!loaded) return undefined;
+
+    const question = String(req.body?.question || "").trim();
+    if (question.length < 3 || question.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: "Please ask a question between 3 and 500 characters.",
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({
+        success: false,
+        message: "The AI assistant is not set up on this server.",
+      });
+    }
+
+    const { revision } = loaded;
+    const drawing = await Drawing.findById(revision.drawing).select("drawingNumber title").lean();
+
+    const answer = await askAboutDrawing({
+      storageKey: revision.file.storageKey,
+      question,
+      record: {
+        drawingNumber: drawing?.drawingNumber || "",
+        title: drawing?.title || "",
+        revisionNumber: revision.revisionNumber,
+        changeSummary: revision.changeSummary,
+      },
+    });
+
+    return res.status(200).json({ success: true, answer });
+  } catch (error) {
+    if (error.userMessage) {
+      return res.status(error.status || 502).json({ success: false, message: error.userMessage });
+    }
+    return next(error);
+  }
+};
+
 module.exports = {
   publishRevision,
   listProjectRevisions,
   getRevisionDetail,
   openRevisionFile,
   addRecipients,
+  askDrawingQuestion,
 };

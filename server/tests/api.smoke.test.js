@@ -49,12 +49,13 @@ for (const path of [
 for (const [method, path] of [
   ["PATCH", "/api/projects/507f1f77bcf86cd799439011"],
   ["DELETE", "/api/projects/507f1f77bcf86cd799439011/members/507f1f77bcf86cd799439012"],
+  ["POST", "/api/drawings/revision/507f1f77bcf86cd799439011/ask"],
 ]) {
   test(`${method} ${path} requires authentication`, async () => {
     const res = await fetch(`${base}${path}`, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: method === "PATCH" ? JSON.stringify({ status: "archived" }) : undefined,
+      body: method === "DELETE" ? undefined : JSON.stringify({ status: "archived", question: "What changed?" }),
     });
     assert.equal(res.status, 401);
   });
