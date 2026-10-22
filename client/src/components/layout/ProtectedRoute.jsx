@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import authService from "../../services/authService.js";
 import { AuthContext } from "../../context/AuthContext.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 /**
  * Asks the server whether the session cookie is valid before showing any protected
  * page, then shares the verified user with the page tree.
  */
 function ProtectedRoute({ children }) {
+  const { t } = useI18n();
   const [state, setState] = useState({ status: "checking", user: null });
 
   useEffect(() => {
@@ -39,7 +41,7 @@ function ProtectedRoute({ children }) {
   if (state.status === "checking") {
     return (
       <div className="loading-block" style={{ minHeight: "100vh" }}>
-        <span className="spinner" /> Verifying your session…
+        <span className="spinner" /> {t("auth.verifying")}
       </div>
     );
   }

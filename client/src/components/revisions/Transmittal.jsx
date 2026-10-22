@@ -1,8 +1,9 @@
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { dueLabel, formatDate, formatDateTime, isOverdue, roleLabel } from "../../utils/format.js";
 
-function stateOf(ack) {
-  if (ack.status === "acknowledged") return "Acknowledged";
-  return ack.viewedAt ? "Opened, not acknowledged" : "Not opened";
+function stateKey(ack) {
+  if (ack.status === "acknowledged") return "recipient.acknowledged";
+  return ack.viewedAt ? "recipient.opened" : "recipient.pending";
 }
 
 /**
@@ -12,6 +13,7 @@ function stateOf(ack) {
  * of who was told what.
  */
 function Transmittal({ revision, project, drawing, acknowledgments, history }) {
+  const { t } = useI18n();
   const replaced = history
     .filter((item) => item.status === "superseded" && item._id !== revision._id)
     .map((item) => item.revisionNumber);
@@ -24,8 +26,8 @@ function Transmittal({ revision, project, drawing, acknowledgments, history }) {
     <section className="transmittal-sheet" aria-hidden="true">
       <header className="tr-head">
         <div>
-          <span className="tr-kicker">Drawing issue record</span>
-          <h1 className="mono">{drawing.drawingNumber} Rev {revision.revisionNumber}</h1>
+          <span className="tr-kicker">{t("tr.kicker")}</span>
+          <h1 className="mono">{drawing.drawingNumber} {t("common.rev")} {revision.revisionNumber}</h1>
           <p>{drawing.title}</p>
         </div>
         <div className="tr-project">
@@ -35,26 +37,26 @@ function Transmittal({ revision, project, drawing, acknowledgments, history }) {
       </header>
 
       <dl className="tr-grid">
-        <div><dt>Issue date</dt><dd>{formatDate(revision.issueDate)}</dd></div>
-        <div><dt>Issued by</dt><dd>{revision.publishedByName || "—"}</dd></div>
-        <div><dt>Published</dt><dd>{formatDateTime(revision.publishedAt)}</dd></div>
-        <div><dt>Acknowledge by</dt><dd>{revision.status === "published" ? dueLabel(revision.ackDueAt) : "—"}</dd></div>
-        <div><dt>Status</dt><dd>{revision.status === "superseded" ? "Superseded" : "Current"}</dd></div>
-        <div><dt>Replaces</dt><dd>{replaced.length ? `Rev ${replaced.join(", ")}` : "—"}</dd></div>
+        <div><dt>{t("tb.issueDate")}</dt><dd>{formatDate(revision.issueDate)}</dd></div>
+        <div><dt>{t("tb.issuedBy")}</dt><dd>{revision.publishedByName || "—"}</dd></div>
+        <div><dt>{t("tr.published")}</dt><dd>{formatDateTime(revision.publishedAt)}</dd></div>
+        <div><dt>{t("tb.ackBy")}</dt><dd>{revision.status === "published" ? dueLabel(revision.ackDueAt) : "—"}</dd></div>
+        <div><dt>{t("tb.status")}</dt><dd>{revision.status === "superseded" ? t("revision.superseded") : t("revision.current")}</dd></div>
+        <div><dt>{t("tr.replaces")}</dt><dd>{replaced.length ? `${t("common.rev")} ${replaced.join(", ")}` : "—"}</dd></div>
       </dl>
 
-      <h2>What changed</h2>
+      <h2>{t("revision.whatChanged")}</h2>
       <p className="tr-summary">{revision.changeSummary}</p>
 
-      <h2>Distribution ({acknowledgments.length})</h2>
+      <h2>{t("tr.distribution", { count: acknowledgments.length })}</h2>
       <table className="tr-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Opened</th>
-            <th>Acknowledged</th>
-            <th>Status</th>
+            <th>{t("col.name")}</th>
+            <th>{t("col.role")}</th>
+            <th>{t("col.opened")}</th>
+            <th>{t("col.acknowledged")}</th>
+            <th>{t("col.status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -64,18 +66,18 @@ function Transmittal({ revision, project, drawing, acknowledgments, history }) {
               <td>{roleLabel(ack.recipientRole)}</td>
               <td>{formatDateTime(ack.viewedAt)}</td>
               <td>{formatDateTime(ack.acknowledgedAt)}</td>
-              <td>{stateOf(ack)}</td>
+              <td>{t(stateKey(ack))}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       {overdueCount > 0 && (
-        <p className="tr-warning">{overdueCount} {overdueCount === 1 ? "person has" : "people have"} not acknowledged by the deadline.</p>
+        <p className="tr-warning">{t("tr.overdueWarning", { count: overdueCount })}</p>
       )}
 
       <footer className="tr-foot">
-        Printed {formatDateTime(new Date())} from Draftera. This record reflects what the system knew at that moment.
+        {t("tr.footer", { date: formatDateTime(new Date()) })}
       </footer>
     </section>
   );

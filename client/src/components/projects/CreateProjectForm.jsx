@@ -1,10 +1,12 @@
 import { useState } from "react";
 import projectService from "../../services/projectService.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
 
 function CreateProjectForm({ onCreated, onCancel }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
@@ -22,7 +24,7 @@ function CreateProjectForm({ onCreated, onCancel }) {
     };
 
     if (payload.name.length < 2 || payload.name.length > 150) {
-      return setError("Project name must contain 2–150 characters.");
+      return setError(t("createProject.err.name"));
     }
 
     if (
@@ -30,9 +32,7 @@ function CreateProjectForm({ onCreated, onCancel }) {
       payload.code.length > 30 ||
       !CODE_PATTERN.test(payload.code)
     ) {
-      return setError(
-        "Project code must be 2–30 characters: letters, numbers, hyphens or underscores."
-      );
+      return setError(t("createProject.err.code"));
     }
 
     setSaving(true);
@@ -51,8 +51,8 @@ function CreateProjectForm({ onCreated, onCancel }) {
     <form className="card" onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
       <div className="card-header">
         <div>
-          <h2>New project</h2>
-          <p>You become the project supervisor and can add your team afterwards.</p>
+          <h2>{t("projects.new")}</h2>
+          <p>{t("createProject.desc")}</p>
         </div>
       </div>
 
@@ -61,28 +61,28 @@ function CreateProjectForm({ onCreated, onCancel }) {
 
         <div className="form-grid">
           <label className="field">
-            Project name
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Riverside Commercial Tower" maxLength={150} required disabled={saving} />
+            {t("project.name")}
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("createProject.namePlaceholder")} maxLength={150} required disabled={saving} />
           </label>
 
           <label className="field">
-            Project code
+            {t("project.code")}
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="RCT-001" maxLength={30} required disabled={saving} />
-            <small>Letters, numbers, hyphens, underscores. Must be unique.</small>
+            <small>{t("createProject.codeHint")}</small>
           </label>
 
           <label className="field full">
-            Description (optional)
+            {t("createProject.descriptionOptional")}
             <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} disabled={saving} />
           </label>
         </div>
 
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Creating…" : "Create project"}
+            {saving ? t("createProject.creating") : t("createProject.create")}
           </button>
           <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import workflowService from "../../services/workflowService.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { formatDateTime } from "../../utils/format.js";
 
 /**
@@ -11,6 +12,7 @@ import { formatDateTime } from "../../utils/format.js";
  * Acknowledgment is not approval, and the wording says so.
  */
 function AcknowledgePanel({ revision, acknowledgment, supersededBy, onOpen, onAcknowledged }) {
+  const { t } = useI18n();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -34,9 +36,9 @@ function AcknowledgePanel({ revision, acknowledgment, supersededBy, onOpen, onAc
         <div className="card-body">
           <Alert kind="warning">
             <span>
-              <strong>This revision is no longer current.</strong> No action is needed here.
+              <strong>{t("ack.notCurrent")}</strong> {t("ack.noAction")}
               {supersededBy && (
-                <> Open <Link to={`/revisions/${supersededBy._id}`}>Rev {supersededBy.revisionNumber}</Link> instead.</>
+                <> {t("ack.openInstead")} <Link to={`/revisions/${supersededBy._id}`}>{t("common.rev")} {supersededBy.revisionNumber}</Link>.</>
               )}
             </span>
           </Alert>
@@ -52,8 +54,8 @@ function AcknowledgePanel({ revision, acknowledgment, supersededBy, onOpen, onAc
     <div className="card">
       <div className="card-header">
         <div>
-          <h2>Your confirmation</h2>
-          <p>You were asked to confirm you have received this revision.</p>
+          <h2>{t("ack.title")}</h2>
+          <p>{t("ack.desc")}</p>
         </div>
       </div>
 
@@ -62,23 +64,23 @@ function AcknowledgePanel({ revision, acknowledgment, supersededBy, onOpen, onAc
 
         <div className="steps">
           <div className={`step ${opened ? "done" : ""}`}>
-            <h3>1. Open the drawing</h3>
-            <p>{opened ? `Opened ${formatDateTime(acknowledgment.viewedAt)}.` : "View the PDF so you know exactly what changed."}</p>
+            <h3>{t("ack.step1")}</h3>
+            <p>{opened ? t("ack.openedAt", { date: formatDateTime(acknowledgment.viewedAt) }) : t("ack.viewPdfHint")}</p>
             <button type="button" className={`btn btn-sm ${opened ? "btn-secondary" : "btn-primary"}`} onClick={onOpen}>
-              {opened ? "Open again" : "Open drawing"}
+              {opened ? t("ack.openAgain") : t("ack.openDrawing")}
             </button>
           </div>
 
           <div className={`step ${done ? "done" : ""}`}>
-            <h3>2. Acknowledge receipt</h3>
+            <h3>{t("ack.step2")}</h3>
             <p>
               {done
-                ? `Acknowledged ${formatDateTime(acknowledgment.acknowledgedAt)}.`
-                : "Confirms you have the latest revision and will work from it. It does not mean you approve the design."}
+                ? t("ack.acknowledgedAt", { date: formatDateTime(acknowledgment.acknowledgedAt) })
+                : t("ack.receiptNote")}
             </p>
             {!done && (
               <button type="button" className="btn btn-success btn-sm" onClick={handleAcknowledge} disabled={!opened || saving}>
-                {saving ? "Saving…" : `Acknowledge Rev ${revision.revisionNumber}`}
+                {saving ? t("common.saving") : t("ack.button", { rev: revision.revisionNumber })}
               </button>
             )}
           </div>

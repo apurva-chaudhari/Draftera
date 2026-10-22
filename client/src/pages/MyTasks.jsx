@@ -4,9 +4,11 @@ import workflowService from "../services/workflowService.js";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
 import RevChip from "../components/ui/RevChip.jsx";
 import { RecipientStatus } from "../components/ui/Badge.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
 import { dueLabel, formatDateTime, isOverdue } from "../utils/format.js";
 
 function Row({ ack }) {
+  const { t } = useI18n();
   const state =
     ack.status === "acknowledged" ? "acknowledged" : ack.viewedAt ? "opened" : "pending";
 
@@ -18,8 +20,8 @@ function Row({ ack }) {
         </span>
         <span className="cell-sub">
           {ack.project?.code} · {ack.status === "acknowledged"
-            ? `acknowledged ${formatDateTime(ack.acknowledgedAt)}`
-            : `issued ${formatDateTime(ack.revision.publishedAt)}`}
+            ? t("tasks.acknowledgedOn", { date: formatDateTime(ack.acknowledgedAt) })
+            : t("tasks.issuedOn", { date: formatDateTime(ack.revision.publishedAt) })}
           {ack.status === "pending" && ack.revision.status === "published" && ack.revision.ackDueAt && (
             <span className={`due-text ${isOverdue(ack.revision.ackDueAt) ? "late" : ""}`}> · {dueLabel(ack.revision.ackDueAt)}</span>
           )}
@@ -48,6 +50,7 @@ function Section({ title, description, items, empty }) {
 }
 
 function MyTasks() {
+  const { t } = useI18n();
   const { data: items, error, reload } = useResource("my-tasks", async () =>
     (await workflowService.listMyAcknowledgments()).acknowledgments
   );
@@ -63,11 +66,11 @@ function MyTasks() {
 
   return (
     <>
-      <PageHeader title="My tasks" description="Revisions issued to you and what you have confirmed." />
-      <Section title="To acknowledge" description="Open the drawing, then confirm you have received it." items={todo} empty="Nothing waiting for you." />
-      <Section title="Acknowledged" items={done} empty="You haven't acknowledged any revisions yet." />
+      <PageHeader title={t("nav.tasks")} description={t("tasks.desc")} />
+      <Section title={t("tasks.todo")} description={t("tasks.todo.desc")} items={todo} empty={t("tasks.todo.empty")} />
+      <Section title={t("recipient.acknowledged")} items={done} empty={t("tasks.done.empty")} />
       {moot.length > 0 && (
-        <Section title="Superseded before you acknowledged" description="A newer revision replaced these. Use the newer one." items={moot} empty="" />
+        <Section title={t("tasks.moot")} description={t("tasks.moot.desc")} items={moot} empty="" />
       )}
     </>
   );

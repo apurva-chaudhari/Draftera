@@ -34,6 +34,13 @@ const drawingService = {
       method: "POST",
     });
   },
+
+  askQuestion(revisionId, question) {
+    return apiRequest(`/drawings/revision/${revisionId}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ question }),
+    });
+  },
 };
 
 export default drawingService;

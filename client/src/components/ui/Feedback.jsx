@@ -1,21 +1,27 @@
+import { useI18n } from "../../i18n/I18nProvider.jsx";
+
 /** Inline message box. kind: error | success | warning | info */
 export function Alert({ kind = "error", children, onRetry }) {
+  const { t } = useI18n();
+
   return (
     <div className={`alert alert-${kind}`} role={kind === "error" ? "alert" : "status"}>
       <span>{children}</span>
       {onRetry && (
         <button type="button" className="btn-link" onClick={onRetry}>
-          Try again
+          {t("common.tryAgain")}
         </button>
       )}
     </div>
   );
 }
 
-export function Loading({ label = "Loading…" }) {
+export function Loading({ label }) {
+  const { t } = useI18n();
+
   return (
     <div className="loading-block">
-      <span className="spinner" /> {label}
+      <span className="spinner" /> {label || t("common.loading")}
     </div>
   );
 }

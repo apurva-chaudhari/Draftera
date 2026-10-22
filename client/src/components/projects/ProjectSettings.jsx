@@ -1,7 +1,8 @@
 import { useState } from "react";
 import projectService from "../../services/projectService.js";
-import { PROJECT_STATUS_OPTIONS } from "../../utils/format.js";
+import { projectStatusOptions } from "../../utils/format.js";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 // Closing a project is easy to do by accident and awkward to notice, so it
 // asks first. Everything else is reversible in one click.
@@ -13,6 +14,8 @@ const NEEDS_CONFIRMATION = ["completed", "archived"];
  * every drawing record and report.
  */
 function ProjectSettings({ project, onChanged }) {
+  const { t } = useI18n();
+  const statusOptions = projectStatusOptions();
   const [status, setStatus] = useState(project.status);
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || "");
@@ -25,11 +28,11 @@ function ProjectSettings({ project, onChanged }) {
   const detailsChanged = name.trim() !== project.name || description.trim() !== (project.description || "");
 
   async function saveStatus() {
-    const target = PROJECT_STATUS_OPTIONS.find((option) => option.value === status);
+    const target = statusOptions.find((option) => option.value === status);
 
     if (
       NEEDS_CONFIRMATION.includes(status) &&
-      !window.confirm(`Mark this project as ${target.label}?\n\n${target.effect}\n\nThe whole team is emailed. You can set it back to Active at any time.`)
+      !window.confirm(t("settings.confirmStatus", { status: target.label, effect: target.effect }))
     ) {
       return;
     }
@@ -69,15 +72,15 @@ function ProjectSettings({ project, onChanged }) {
       <section className="card">
         <div className="card-header">
           <div>
-            <h2>Project status</h2>
-            <p>Decides what the team can do right now. Changing it emails everyone on the project.</p>
+            <h2>{t("settings.status")}</h2>
+            <p>{t("settings.status.desc")}</p>
           </div>
         </div>
         <div className="card-body">
           {statusMessage && <Alert kind={statusMessage.kind}>{statusMessage.text}</Alert>}
 
-          <div className="status-options" role="radiogroup" aria-label="Project status">
-            {PROJECT_STATUS_OPTIONS.map((option) => (
+          <div className="status-options" role="radiogroup" aria-label={t("settings.status")}>
+            {statusOptions.map((option) => (
               <label
                 key={option.value}
                 className={`status-option tone-${option.value} ${status === option.value ? "selected" : ""}`}
@@ -93,7 +96,7 @@ function ProjectSettings({ project, onChanged }) {
                 <span className="status-option-body">
                   <strong>
                     {option.label}
-                    {option.value === project.status && <em> · current</em>}
+                    {option.value === project.status && <em> · {t("settings.current")}</em>}
                   </strong>
                   <span>{option.effect}</span>
                 </span>
@@ -103,7 +106,7 @@ function ProjectSettings({ project, onChanged }) {
 
           <div className="form-actions">
             <button className="btn btn-primary" type="button" onClick={saveStatus} disabled={!statusChanged || savingStatus}>
-              {savingStatus ? "Saving…" : "Change status"}
+              {savingStatus ? t("common.saving") : t("project.changeStatus")}
             </button>
           </div>
         </div>
@@ -112,25 +115,25 @@ function ProjectSettings({ project, onChanged }) {
       <form className="card" onSubmit={saveDetails}>
         <div className="card-header">
           <div>
-            <h2>Project details</h2>
-            <p>The project code <span className="mono">{project.code}</span> cannot be changed because it is printed on every drawing record and report.</p>
+            <h2>{t("settings.details")}</h2>
+            <p>{t("settings.codeFixed", { code: project.code })}</p>
           </div>
         </div>
         <div className="card-body">
           {detailsMessage && <Alert kind={detailsMessage.kind}>{detailsMessage.text}</Alert>}
           <div className="form-grid">
             <label className="field full">
-              Project name
+              {t("project.name")}
               <input value={name} onChange={(e) => setName(e.target.value)} minLength={2} maxLength={150} required disabled={savingDetails} />
             </label>
             <label className="field full">
-              Description
+              {t("settings.description")}
               <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} disabled={savingDetails} />
             </label>
           </div>
           <div className="form-actions">
             <button className="btn btn-primary" type="submit" disabled={!detailsChanged || savingDetails}>
-              {savingDetails ? "Saving…" : "Save details"}
+              {savingDetails ? t("common.saving") : t("settings.saveDetails")}
             </button>
           </div>
         </div>

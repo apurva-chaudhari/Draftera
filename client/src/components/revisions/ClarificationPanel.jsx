@@ -2,9 +2,11 @@ import { useState } from "react";
 import workflowService from "../../services/workflowService.js";
 import { ClarificationStatus } from "../ui/Badge.jsx";
 import { Alert } from "../ui/Feedback.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 import { formatDateTime } from "../../utils/format.js";
 
 function Thread({ item, isSupervisor, currentUserId, onChanged, onError }) {
+  const { t } = useI18n();
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -45,10 +47,10 @@ function Thread({ item, isSupervisor, currentUserId, onChanged, onError }) {
 
       {isSupervisor && item.status !== "resolved" && (
         <div style={{ marginTop: 12 }}>
-          <textarea className="input" rows={2} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={item.response ? "Update your answer…" : "Write your answer…"} maxLength={5000} disabled={busy} />
+          <textarea className="input" rows={2} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={item.response ? t("clar.updatePlaceholder") : t("clar.answerPlaceholder")} maxLength={5000} disabled={busy} />
           <div className="form-actions" style={{ marginTop: 8 }}>
             <button type="button" className="btn btn-primary btn-sm" disabled={busy || !answer.trim()} onClick={() => run(() => workflowService.respondToClarification(item._id, answer))}>
-              {item.response ? "Update answer" : "Send answer"}
+              {item.response ? t("clar.updateAnswer") : t("clar.sendAnswer")}
             </button>
           </div>
         </div>
@@ -57,7 +59,7 @@ function Thread({ item, isSupervisor, currentUserId, onChanged, onError }) {
       {canResolve && (
         <div className="form-actions" style={{ marginTop: 10 }}>
           <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => run(() => workflowService.resolveClarification(item._id))}>
-            Mark as resolved
+            {t("clar.resolve")}
           </button>
         </div>
       )}
@@ -67,6 +69,7 @@ function Thread({ item, isSupervisor, currentUserId, onChanged, onError }) {
 
 /** Questions about one revision, kept next to the drawing they concern. */
 function ClarificationPanel({ revision, clarifications, isSupervisor, currentUserId, onChanged }) {
+  const { t } = useI18n();
   const [question, setQuestion] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -91,8 +94,8 @@ function ClarificationPanel({ revision, clarifications, isSupervisor, currentUse
     <div className="card">
       <div className="card-header">
         <div>
-          <h2>Clarifications ({clarifications.length})</h2>
-          <p>Questions stay attached to this revision so the answer is never lost in chat.</p>
+          <h2>{t("clar.title", { count: clarifications.length })}</h2>
+          <p>{t("clar.desc")}</p>
         </div>
       </div>
 
@@ -103,18 +106,18 @@ function ClarificationPanel({ revision, clarifications, isSupervisor, currentUse
       ))}
 
       {clarifications.length === 0 && (
-        <p style={{ padding: "18px 22px", color: "var(--color-text-muted)", fontSize: 13.5 }}>No questions raised on this revision.</p>
+        <p style={{ padding: "18px 22px", color: "var(--color-text-muted)", fontSize: 13.5 }}>{t("clar.none")}</p>
       )}
 
       {revision.status !== "draft" && (
         <form className="card-body" onSubmit={handleAsk} style={{ borderTop: "1px solid var(--color-border)" }}>
           <label className="field">
-            Ask a question about this revision
-            <textarea rows={3} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Does this also apply to the balcony slab?" minLength={5} maxLength={5000} required disabled={saving} />
+            {t("clar.ask")}
+            <textarea rows={3} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t("clar.askPlaceholder")} minLength={5} maxLength={5000} required disabled={saving} />
           </label>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary btn-sm" disabled={saving || question.trim().length < 5}>
-              {saving ? "Sending…" : "Submit question"}
+              {saving ? t("common.sending") : t("clar.submit")}
             </button>
           </div>
         </form>

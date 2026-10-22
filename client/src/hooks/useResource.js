@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
+import { translate } from "../i18n/core.js";
 
 /**
  * Load data when `key` changes and expose a `reload` function.
@@ -31,7 +32,7 @@ function useResource(key, fetcher) {
           setState((previous) => ({
             key,
             data: previous.key === key ? previous.data : null,
-            error: error.message || "Unable to load this page.",
+            error: error.message || translate("api.loadFailed"),
           }));
         }
       });

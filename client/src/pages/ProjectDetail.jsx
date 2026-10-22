@@ -11,9 +11,11 @@ import RevisionTable from "../components/revisions/RevisionTable.jsx";
 import UploadRevisionForm from "../components/revisions/UploadRevisionForm.jsx";
 import { ProjectStatus } from "../components/ui/Badge.jsx";
 import { Alert, EmptyState, Loading, PageHeader } from "../components/ui/Feedback.jsx";
+import { useI18n } from "../i18n/I18nProvider.jsx";
 import { statusNotice } from "../utils/format.js";
 
 function ProjectDetail() {
+  const { t } = useI18n();
   const { projectId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ function ProjectDetail() {
       drawingService.listProjectRevisions(projectId),
       projectService.getActivity(projectId),
     ]);
-
+    
     // The currency matrix is a supervisor-only monitoring view.
     const currency = projectResponse.access.isSupervisor
       ? await projectService.getCurrency(projectId)
@@ -79,16 +81,16 @@ function ProjectDetail() {
   }, [revisions, search]);
 
   if (error) return <Alert kind="error" onRetry={load}>{error}</Alert>;
-  if (!data) return <Loading label="Loading project…" />;
+  if (!data) return <Loading label={t("project.loading")} />;
 
   const { project, access, activity, currency } = data;
 
   const tabs = [
-    { id: "drawings", label: `Drawings (${revisions.length})` },
-    ...(access.isSupervisor ? [{ id: "currency", label: "Revision currency" }] : []),
-    { id: "team", label: `Team (${project.members.length})` },
-    { id: "activity", label: "Activity" },
-    ...(access.isSupervisor ? [{ id: "settings", label: "Settings" }] : []),
+    { id: "drawings", label: t("project.tab.drawings", { count: revisions.length }) },
+    ...(access.isSupervisor ? [{ id: "currency", label: t("project.tab.currency") }] : []),
+    { id: "team", label: t("project.tab.team", { count: project.members.length }) },
+    { id: "activity", label: t("project.tab.activity") },
+    ...(access.isSupervisor ? [{ id: "settings", label: t("project.tab.settings") }] : []),
   ];
 
   const notice = statusNotice(project.status);
@@ -98,7 +100,7 @@ function ProjectDetail() {
   return (
     <>
       <div className="breadcrumb">
-        <Link to="/projects">Projects</Link> / <span>{project.code}</span>
+        <Link to="/projects">{t("nav.projects")}</Link> / <span>{project.code}</span>
       </div>
 
       <PageHeader
@@ -109,12 +111,12 @@ function ProjectDetail() {
             <ProjectStatus status={project.status} />
             {access.isSupervisor && (
               <button type="button" className="btn btn-secondary" onClick={handleDownloadReport} disabled={downloading}>
-                {downloading ? "Preparing…" : "Download report (CSV)"}
+                {downloading ? t("project.preparing") : t("project.downloadReport")}
               </button>
             )}
             {access.isSupervisor && project.status === "active" && (
               <button type="button" className="btn btn-primary" onClick={() => setShowUpload((v) => !v)}>
-                {showUpload ? "Close" : "Upload revision"}
+                {showUpload ? t("common.close") : t("project.upload")}
               </button>
             )}
           </>
@@ -128,7 +130,7 @@ function ProjectDetail() {
           {notice}{" "}
           {access.isSupervisor && (
             <button type="button" className="btn-link" onClick={() => setSearchParams({ tab: "settings" })}>
-              Change status
+              {t("project.changeStatus")}
             </button>
           )}
         </Alert>
@@ -145,7 +147,7 @@ function ProjectDetail() {
         />
       )}
 
-      <div className="tabs" role="tablist">
+      <div className="tabs" role="tablist" aria-label={t("project.tabsLabel")}>
         {tabs.map((item) => (
           <button key={item.id} role="tab" aria-selected={current === item.id} className={`tab ${current === item.id ? "active" : ""}`} onClick={() => setSearchParams({ tab: item.id })}>
             {item.label}
@@ -156,15 +158,15 @@ function ProjectDetail() {
       {current === "drawings" && (
         <div className="card">
           {revisions.length === 0 ? (
-            <EmptyState title="No drawings yet">
+            <EmptyState title={t("project.drawings.empty")}>
               {access.isSupervisor
-                ? "Upload the first drawing revision to get started."
-                : "Drawings appear here once the supervisor publishes them to you."}
+                ? t("project.drawings.empty.supervisor")
+                : t("project.drawings.empty.member")}
             </EmptyState>
           ) : (
             <>
               <div className="card-header">
-                <input className="input" style={{ maxWidth: 320 }} type="search" placeholder="Search drawings…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search drawings" />
+                <input className="input" style={{ maxWidth: 320 }} type="search" placeholder={t("project.searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("project.searchLabel")} />
               </div>
               <RevisionTable revisions={filteredRevisions} />
             </>
