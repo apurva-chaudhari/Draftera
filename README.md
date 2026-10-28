@@ -1,13 +1,26 @@
+<div align="center">
+
 # Draftera
 
 **Make sure everyone on site is working from the latest drawing revision.**
 
-Draftera is a construction drawing revision and acknowledgment platform built for Synckraft Technologies' internship assessment, **SK-SEL-03: Drawing Revision Confusion**.
+A construction drawing revision and acknowledgment platform built for Synckraft Technologies' internship assessment, **SK-SEL-03: Drawing Revision Confusion**.
 
-It helps project supervisors distribute controlled drawing revisions, track recipient activity, record acknowledgments, and identify people who may still be working from an outdated revision.
+[**Live Application**](https://draftera.vercel.app/login) · [**Backend API Health**](https://draftera-api.onrender.com/api/health) · [**Documentation**](#documentation)
 
-**Live application:** [Open Draftera](https://draftera.vercel.app/login)  
-**Backend API:** [Draftera API](https://draftera-api.onrender.com/api/health)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-Express_5-339933?logo=nodedotjs&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Storage-3FCF8E?logo=supabase&logoColor=white)
+![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?logo=vercel&logoColor=white)
+![Render](https://img.shields.io/badge/API-Render-46E3B7?logo=render&logoColor=white)
+
+<br />
+
+<img src="docs/screenshots/supervisor-overview.png" alt="Draftera supervisor overview showing active projects, current revisions, pending acknowledgments and revision risks" width="900" />
+
+</div>
 
 ---
 
@@ -16,6 +29,7 @@ It helps project supervisors distribute controlled drawing revisions, track reci
 - [The Problem](#the-problem)
 - [The Solution](#the-solution)
 - [Key Features](#key-features)
+- [Screenshots](#screenshots)
 - [System Workflow](#system-workflow)
 - [User Interface and Accessibility](#user-interface-and-accessibility)
 - [Technology Stack](#technology-stack)
@@ -81,7 +95,85 @@ Instead of relying only on informal communication, the platform makes distributi
 
 The AI integration is optional and requires the relevant Gemini configuration.
 
-**Important distinction:** An acknowledgment represents receipt of a revision, not approval of the drawing, confirmation of understanding, or verification that construction work complies with it.
+> **Important distinction:** An acknowledgment represents receipt of a revision, not approval of the drawing, confirmation of understanding, or verification that construction work complies with it.
+
+## Screenshots
+
+### Sign in
+
+<p align="center">
+  <img src="docs/screenshots/login.png" alt="Draftera sign-in page" width="800" />
+</p>
+
+### Supervisor workflow
+
+**1. Create a project.** The creator becomes the project supervisor and can add the team afterwards.
+
+<p align="center">
+  <img src="docs/screenshots/create-project.png" alt="Create project form" width="800" />
+</p>
+
+**2. Manage drawings and revisions.** Each drawing shows its current revision, status, issue date, and acknowledgment progress. Older revisions remain visible as superseded.
+
+<p align="center">
+  <img src="docs/screenshots/project-drawings.png" alt="Project drawings list with revision, status and acknowledgment progress" width="800" />
+</p>
+
+**3. Monitor revision currency.** See who has acknowledged, opened, not opened, or not been issued the current revision, and act directly with *Remind* or *Issue to them*.
+
+<p align="center">
+  <img src="docs/screenshots/revision-currency.png" alt="Revision currency matrix showing per-person status on the current revision" width="800" />
+</p>
+
+### Recipient workflow
+
+**Open, then acknowledge.** Recipients must open the drawing before they can acknowledge receipt of that specific revision. Acknowledgment confirms receipt, not approval of the design.
+
+<p align="center">
+  <img src="docs/screenshots/recipient-acknowledgment.png" alt="Revision page with the AI assistant, change summary and two-step confirmation" width="800" />
+</p>
+
+**Superseded revisions are clearly marked.** Older revisions stay available for reference, with a prominent warning not to build from them and a link to the current revision.
+
+<p align="center">
+  <img src="docs/screenshots/superseded-revision.png" alt="Superseded revision page with a warning banner pointing to the current revision" width="800" />
+</p>
+
+**Clarifications stay attached to the revision.** Questions and answers are recorded against the relevant revision, with an explicit *Mark as resolved* step, so answers are not lost in chat.
+
+<p align="center">
+  <img src="docs/screenshots/clarification-answered.png" alt="Answered clarification attached to a revision" width="800" />
+</p>
+
+### Notifications, language, and mobile
+
+**Email notifications** tell recipients which revision replaced which, and when to acknowledge by (where Brevo is configured).
+
+**Multilingual interface** in English, हिन्दी, and मराठी.
+
+**Responsive layout** with bottom navigation on mobile.
+
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshots/email-notification.png" alt="Email asking the recipient to acknowledge a new revision" width="240" /><br />
+      <sub><b>Revision email</b></sub>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshots/mobile-dashboard.png" alt="Draftera dashboard on a mobile browser" width="240" /><br />
+      <sub><b>Mobile dashboard</b></sub>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/screenshots/marathi-dashboard.png" alt="Draftera dashboard in Marathi" width="320" /><br />
+      <sub><b>Marathi interface</b></sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/register-multilingual.png" alt="Registration page with the language selector open" width="800" /><br />
+  <sub>The language selector is available on the registration page and inside the app.</sub>
+</p>
 
 ## System Workflow
 
@@ -190,6 +282,7 @@ Draftera/
 │   ├── scripts/           # Demo data and maintenance scripts
 │   └── tests/             # Backend tests
 ├── docs/
+│   ├── screenshots/       # README screenshots
 │   ├── problem-analysis.md
 │   ├── evidence-register.md
 │   ├── requirements.md
@@ -323,7 +416,7 @@ The frontend and backend must both be running for the complete application workf
 
 ## Environment Configuration
 
-Never commit `.env` files, passwords, database connection strings, API keys, or service-role credentials to GitHub.
+> **Never commit** `.env` files, passwords, database connection strings, API keys, or service-role credentials to GitHub.
 
 | Variable | Location | Purpose |
 |---|---|---|
@@ -460,6 +553,10 @@ See [Design Decisions and Trade-offs](docs/design-decisions.md) and [Security Do
 
 ---
 
+<div align="center">
+
 **Built as part of Synckraft Technologies' software developer internship assessment.**
 
 Draftera is designed to make drawing distribution more traceable, revision status more visible, and construction communication more accountable.
+
+</div>

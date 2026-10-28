@@ -98,7 +98,7 @@ function RevisionDetail() {
       </header>
 
       <TitleBlock revision={revision} project={project} drawing={drawing} />
-      <DrawingAssistant revisionId={revision._id} />
+      r<DrawingAssistant revisionId={revision._id} />
       {fileError && <Alert kind="error">{fileError}</Alert>}
 
       {isSuperseded && (
